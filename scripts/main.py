@@ -14,9 +14,13 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.character = bge.constraints.getCharacter(self.object)
         self.camera_pivot = self.object.children['Player.CameraPivot']
         self.model = self.object.children['Player.Model']
+        self.player_animator = PlayerAnimator(self.model, 1.0, self.on_jump_animation_end)
         self.platform_raycast_vec = Vector([0, 0, -1.5])
         self.platform = None
         self.prev_platform_position = Vector([0, 0, 0])
+
+    def on_jump_animation_end(self):
+        self.character.jump()
 
     def update(self):
         keyboard = bge.logic.keyboard.events
@@ -42,13 +46,14 @@ class PlayerController(bge.types.KX_PythonComponent):
         move_vec[2] = 0
         self.object.applyMovement(move_vec, False)
 
-        if speed_x != 0 or speed_y != 0:
+        is_running = speed_x != 0 or speed_y != 0
+
+        self.player_animator.set_running(is_running)
+        self.player_animator.set_grounded(self.character.onGround)
+
+        if is_running:
             move_vec.normalize()
             self.model.worldOrientation = move_vec.to_track_quat('Y','Z').to_euler()
-
-        if keyboard[bge.events.SPACEKEY]:
-           if self.platform:
-               self.character.jump()
 
         if self.character.onGround:
             if not self.platform:
@@ -68,3 +73,68 @@ class PlayerController(bge.types.KX_PythonComponent):
             deltas = current_platform_position - self.prev_platform_position
             self.object.applyMovement(deltas, False)
             self.prev_platform_position = current_platform_position
+
+        if keyboard[bge.events.SPACEKEY]:
+            if self.platform:
+                self.player_animator.start_jumping()
+
+        self.player_animator.update()
+
+class PlayerAnimator():
+    def __init__(self, armature, speed, on_jump_animation_end):
+        self.armature = armature
+        self.speed = speed
+        self.state = "IDLE"
+        self.play_idle()
+        self.on_jump_animation_end = on_jump_animation_end
+
+    def set_running(self, value):
+        if self.state == "IDLE":
+            if value:
+                self.armature.stopAction()
+                self.play_running()
+                self.state = "RUNNING"
+        elif self.state == "RUNNING":
+            if not value:
+                self.armature.stopAction()
+                self.play_idle()
+                self.state = "IDLE"
+
+    def set_grounded(self, value):
+        if self.state == "FALLING":
+            if value:
+                self.armature.stopAction()
+                self.play_idle()
+                self.state = "IDLE"
+        elif self.state != "JUMPING":
+            if not value:
+                self.armature.stopAction()
+                self.play_falling()
+                self.state = "FALLING"
+
+    def start_jumping(self):
+        print("self.state", self.state)
+        if self.state != "JUMPING":
+            print("start_jumping")
+            self.armature.stopAction()
+            self.play_jumping()
+            self.state = "JUMPING"
+
+    def update(self):
+        if self.state == "JUMPING":
+            if not self.armature.isPlayingAction():
+                self.on_jump_animation_end()
+                self.play_falling()
+                self.state = "FALLING"
+
+    def play_idle(self):
+        self.armature.playAction('Idle', 0, 16, 0, 0, 0, 1, 0, 0, self.speed * 0.5)
+
+    def play_running(self):
+        self.armature.playAction('Running', 0, 20, 0, 0, 0, 1, 0, 0, self.speed)
+
+    def play_jumping(self):
+        self.armature.playAction('Jumping', 0, 8, 0, 0, 0, 0, 0, 0, self.speed * 2)
+
+    def play_falling(self):
+        self.armature.playAction('Falling', 0, 32, 0, 0, 0, 1, 0, 0, self.speed)
