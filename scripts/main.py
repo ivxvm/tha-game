@@ -7,6 +7,7 @@ class PlayerController(bge.types.KX_PythonComponent):
 
     args = OrderedDict([
         ("Move Speed", 0.1),
+        ("Pre Falling Eta", 0.1),
     ])
 
     def start(self, args):
@@ -14,7 +15,11 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.character = bge.constraints.getCharacter(self.object)
         self.camera_pivot = self.object.children['Player.CameraPivot']
         self.model = self.object.children['Player.Model']
-        self.player_animator = PlayerAnimator(self.model, 1.0, self.on_jump_animation_end)
+        self.player_animator = PlayerAnimator(
+            armature=self.model,
+            speed=1.0,
+            pre_falling_eta=args['Pre Falling Eta'],
+            on_jump_animation_end=self.on_jump_animation_end)
         self.platform_raycast_vec = Vector([0, 0, -1.5])
         self.platform = None
         self.prev_platform_position = Vector([0, 0, 0])
@@ -81,12 +86,15 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.player_animator.update()
 
 class PlayerAnimator():
-    def __init__(self, armature, speed, on_jump_animation_end):
+    def __init__(self, armature, speed, pre_falling_eta, on_jump_animation_end):
         self.armature = armature
         self.speed = speed
+        self.pre_falling_eta = pre_falling_eta
         self.state = "IDLE"
         self.play_idle()
         self.on_jump_animation_end = on_jump_animation_end
+        self.last_grounded_timestamp = bge.logic.getClockTime()
+        self.pre_falling_delta = 0
 
     def set_running(self, value):
         if self.state == "IDLE":
@@ -101,6 +109,7 @@ class PlayerAnimator():
                 self.state = "IDLE"
 
     def set_grounded(self, value):
+        current_grounded_timestamp = bge.logic.getClockTime()
         if self.state == "FALLING":
             if value:
                 self.armature.stopAction()
@@ -108,9 +117,15 @@ class PlayerAnimator():
                 self.state = "IDLE"
         elif self.state != "JUMPING":
             if not value:
-                self.armature.stopAction()
-                self.play_falling()
-                self.state = "FALLING"
+                self.pre_falling_delta += current_grounded_timestamp - self.last_grounded_timestamp
+                if self.pre_falling_delta > self.pre_falling_eta:
+                    self.armature.stopAction()
+                    self.play_falling()
+                    self.state = "FALLING"
+                    self.pre_falling_delta = 0
+            else:
+                self.pre_falling_delta = 0
+        self.last_grounded_timestamp = current_grounded_timestamp
 
     def start_jumping(self):
         print("self.state", self.state)

@@ -5,3 +5,6 @@ class WaypointList(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("NextWaypoint", ""),
     ])
+
+    def start(self, args):
+        self.next_waypoint = args["NextWaypoint"]
