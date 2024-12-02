@@ -8,10 +8,12 @@ class PlayerController(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("Move Speed", 0.1),
         ("Pre Falling Eta", 0.1),
+        ("Platform Change Cooldown", 0.1),
     ])
 
     def start(self, args):
         self.move_speed = args['Move Speed']
+        self.platform_change_cooldown = args['Platform Change Cooldown']
         self.character = bge.constraints.getCharacter(self.object)
         self.camera_pivot = self.object.children['Player.CameraPivot']
         self.model = self.object.children['Player.Model']
@@ -23,6 +25,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.platform_raycast_vec = Vector([0, 0, -1.5])
         self.platform = None
         self.prev_platform_position = Vector([0, 0, 0])
+        self.last_platform_change_timestamp = bge.logic.getClockTime()
 
     def on_jump_animation_end(self):
         self.character.jump()
@@ -60,17 +63,23 @@ class PlayerController(bge.types.KX_PythonComponent):
             move_vec.normalize()
             self.model.worldOrientation = move_vec.to_track_quat('Y','Z').to_euler()
 
-        if self.character.onGround:
-            if not self.platform:
+        now = bge.logic.getClockTime()
+
+        if now - self.last_platform_change_timestamp > self.platform_change_cooldown:
+            platform_changed = False
+            if self.character.onGround:
                 position = self.object.worldPosition
                 hit_target, _, _ = self.object.rayCast(position + self.platform_raycast_vec, mask=0x1)
-                if hit_target:
+                if hit_target and self.platform != hit_target:
                     self.platform = hit_target
+                    platform_changed = True
                     self.prev_platform_position = Vector(self.platform.worldPosition)
-                    print("self.platform =", self.platform)
-        else:
-            if self.platform:
-                self.platform = None
+            else:
+                if self.platform:
+                    self.platform = None
+                    platform_changed = True
+            if platform_changed:
+                self.last_platform_change_timestamp = now
                 print("self.platform =", self.platform)
 
         if self.platform:
@@ -102,11 +111,13 @@ class PlayerAnimator():
                 self.armature.stopAction()
                 self.play_running()
                 self.state = "RUNNING"
+                print("self.state", self.state)
         elif self.state == "RUNNING":
             if not value:
                 self.armature.stopAction()
                 self.play_idle()
                 self.state = "IDLE"
+                print("self.state", self.state)
 
     def set_grounded(self, value):
         current_grounded_timestamp = bge.logic.getClockTime()
@@ -115,6 +126,7 @@ class PlayerAnimator():
                 self.armature.stopAction()
                 self.play_idle()
                 self.state = "IDLE"
+                print("self.state", self.state)
         elif self.state != "JUMPING":
             if not value:
                 self.pre_falling_delta += current_grounded_timestamp - self.last_grounded_timestamp
@@ -123,17 +135,18 @@ class PlayerAnimator():
                     self.play_falling()
                     self.state = "FALLING"
                     self.pre_falling_delta = 0
+                    print("self.state", self.state)
             else:
                 self.pre_falling_delta = 0
         self.last_grounded_timestamp = current_grounded_timestamp
 
     def start_jumping(self):
-        print("self.state", self.state)
         if self.state != "JUMPING":
             print("start_jumping")
             self.armature.stopAction()
             self.play_jumping()
             self.state = "JUMPING"
+            print("self.state", self.state)
 
     def update(self):
         if self.state == "JUMPING":
@@ -141,6 +154,7 @@ class PlayerAnimator():
                 self.on_jump_animation_end()
                 self.play_falling()
                 self.state = "FALLING"
+                print("self.state", self.state)
 
     def play_idle(self):
         self.armature.playAction('Idle', 0, 16, 0, 0, 0, 1, 0, 0, self.speed * 0.5)

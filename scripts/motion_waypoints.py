@@ -15,11 +15,10 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
         self.waypoints = []
         self.displacements = []
         self.travel_times_by_segment = []
+        self.is_cycle = False
         waypoint_ids = []
         current_waypoint = self.start_waypoint
         while True:
-            if id(current_waypoint) in waypoint_ids:
-                break
             self.waypoints.append(current_waypoint)
             waypoint_ids.append(id(current_waypoint))
             waypoint_list_component = current_waypoint.components.get("WaypointList")
@@ -32,18 +31,24 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
                 segment_lengths.append(segment_length)
                 total_distance += segment_length
                 current_waypoint = next_waypoint
+                if id(current_waypoint) in waypoint_ids:
+                    self.is_cycle = True
+                    self.waypoints.append(current_waypoint)
+                    break
             else:
                 break
-        for i in range(len(self.waypoints) - 1):
+        self.segments_count = len(self.waypoints) - 1
+        for i in range(self.segments_count):
             self.travel_times_by_segment.append((segment_lengths[i] / total_distance) * self.total_travel_time)
         print("self.travel_times_by_segment", self.travel_times_by_segment)
 
     def proceed_to_next_segment(self):
         should_flip_direction_sign = False
-        if (self.current_segment_index == 0) and (self.direction_sign == -1):
-            should_flip_direction_sign = True
-        if (self.current_segment_index == len(self.waypoints) - 2) and (self.direction_sign == 1):
-            should_flip_direction_sign = True
+        if not self.is_cycle:
+            if (self.current_segment_index == 0) and (self.direction_sign == -1):
+                should_flip_direction_sign = True
+            if (self.current_segment_index == len(self.waypoints) - 2) and (self.direction_sign == 1):
+                should_flip_direction_sign = True
         # print("\n\n\n")
         # print("proceed_to_next_segment | self.direction_sign", self.direction_sign)
         # print("proceed_to_next_segment | self.direction_sign", self.current_segment_index)
@@ -53,7 +58,7 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
                 self.state = "FINISHED"
             self.direction_sign *= -1
         else:
-            self.current_segment_index += self.direction_sign
+            self.current_segment_index = (self.current_segment_index + self.direction_sign) % self.segments_count
         # print("proceed_to_next_segment | new_direction_sign", self.direction_sign)
         # print("\n\n\n")
         self.start_time = bge.logic.getClockTime()

@@ -22,7 +22,7 @@ class Elevator(bge.types.KX_PythonComponent):
             return
         if self.is_triggered:
             current_time = bge.logic.getClockTime()
-            progress = (current_time - self.start_time) / self.travel_time
+            progress = min(1.0, (current_time - self.start_time) / self.travel_time)
             self.object.worldPosition = self.start_position + self.displacement * progress
             if current_time >= self.end_time:
                 self.is_finished = True
