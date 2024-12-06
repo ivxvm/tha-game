@@ -163,7 +163,7 @@ class PlayerAnimator():
         self.armature.playAction('Running', 0, 20, 0, 0, 0, 1, 0, 0, self.speed)
 
     def play_jumping(self):
-        self.armature.playAction('Jumping', 0, 8, 0, 0, 0, 0, 0, 0, self.speed * 2)
+        self.armature.playAction('Jumping', 4, 8, 0, 0, 0, 0, 0, 0, self.speed * 2)
 
     def play_falling(self):
         self.armature.playAction('Falling', 0, 32, 0, 0, 0, 1, 0, 0, self.speed)

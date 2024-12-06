@@ -1,5 +1,4 @@
 import bpy
-import copy
 
 for obj in bpy.context.selected_objects:
     print("\n: Components of [% s]" % obj.name)
