@@ -1,12 +1,26 @@
-import bge
+# platform initially still, starts moving on player enter, stops at last point before next triger
+#   | start type = on trigger, autoloop = false + empty object with trigger on enter parented to platform
+# platform initially still, starts moving on player enter, continues moving back and forth
+#   | start type = on trigger, autoloop = true + empty object with trigger on enter parented to platform
+
+
+import bge, bpy
 from collections import OrderedDict
+
+STATE_INIT = "INIT"
+STATE_RUNNING = "RUNNING"
+STATE_DELAY = "DELAY"
+
+START_TYPE_ON_LOAD = "OnLoad"
+START_TYPE_ON_TRIGGER = "OnTrigger"
 
 class MotionWaypoints(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("TravelTime", 10),
-        ("StartWaypoint", ""),
-        ("Looped", False),
-        ("StartType", "OnLoad"), # OnLoad | OnPlayerStep
+        ("TravelTime", 10.0),
+        ("StartWaypoint", bpy.types.Object),
+        ("StartType", {START_TYPE_ON_LOAD, START_TYPE_ON_TRIGGER}),
+        ("AutoLoop", False),
+        ("Delay", 0.0),
     ])
 
     def init_waypoints(self):
@@ -22,7 +36,7 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
             self.waypoints.append(current_waypoint)
             waypoint_ids.append(id(current_waypoint))
             waypoint_list_component = current_waypoint.components.get("WaypointList")
-            next_waypoint_name = waypoint_list_component and waypoint_list_component.next_waypoint
+            next_waypoint_name = waypoint_list_component and waypoint_list_component.next_waypoint.name
             if next_waypoint_name:
                 next_waypoint = self.object.scene.objects[next_waypoint_name]
                 displacement = next_waypoint.worldPosition - current_waypoint.worldPosition
@@ -42,20 +56,23 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
             self.travel_times_by_segment.append((segment_lengths[i] / total_distance) * self.total_travel_time)
         print("self.travel_times_by_segment", self.travel_times_by_segment)
 
+    def is_end_of_path(self):
+        if self.is_cycle:
+            return False
+        if (self.current_segment_index == 0) and (self.direction_sign == -1):
+            return True
+        if (self.current_segment_index == len(self.waypoints) - 2) and (self.direction_sign == 1):
+            return True
+        return False
+
     def proceed_to_next_segment(self):
-        should_flip_direction_sign = False
-        if not self.is_cycle:
-            if (self.current_segment_index == 0) and (self.direction_sign == -1):
-                should_flip_direction_sign = True
-            if (self.current_segment_index == len(self.waypoints) - 2) and (self.direction_sign == 1):
-                should_flip_direction_sign = True
         # print("\n\n\n")
         # print("proceed_to_next_segment | self.direction_sign", self.direction_sign)
         # print("proceed_to_next_segment | self.direction_sign", self.current_segment_index)
         # print("proceed_to_next_segment | should_flip_direction_sign", should_flip_direction_sign)
-        if should_flip_direction_sign:
-            if not self.is_looped:
-                self.state = "FINISHED"
+        if self.is_end_of_path():
+            if not self.auto_loop:
+                self.is_active = False
             self.direction_sign *= -1
         else:
             self.current_segment_index = (self.current_segment_index + self.direction_sign) % self.segments_count
@@ -70,32 +87,55 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
 
     def start(self, args):
         self.total_travel_time = args["TravelTime"]
-        self.start_waypoint = self.object.scene.objects[args["StartWaypoint"]]
-        self.is_looped = args["Looped"]
-        self.is_waiting_for_trigger = args["StartType"] != "OnLoad"
-        self.player_controller = self.object.scene.objects["Player.Root"].components["PlayerController"]
-        self.state = "INIT"
+        self.start_waypoint = self.object.scene.objects[args["StartWaypoint"].name]
+        self.auto_loop = args["AutoLoop"]
+        self.start_type = args["StartType"]
+        self.delay = args["Delay"]
+        # self.is_waiting_for_trigger = args["StartType"] != START_TYPE_ON_LOAD
+        # self.player_controller = self.object.scene.objects["Player.Root"].components["PlayerController"]
+        self.state = STATE_INIT
         self.is_active = False
         self.current_segment_index = -1
         self.direction_sign = 1
+        self.delay_elapsed = 0.0
+        self.prev_frame_timestamp = bge.logic.getClockTime()
 
     def update(self):
-        if self.state == "INIT":
+        timestamp = bge.logic.getClockTime()
+        if self.state == STATE_INIT:
             self.init_waypoints()
-            self.state = "RUNNING"
-        elif self.state == "RUNNING":
+            self.state = STATE_RUNNING
+            if self.start_type == START_TYPE_ON_LOAD:
+                self.trigger()
+        elif self.state == STATE_RUNNING:
             if self.is_active:
                 current_time = bge.logic.getClockTime()
                 progress = (current_time - self.start_time) / self.travel_times_by_segment[self.current_segment_index]
                 displacement = self.displacements[self.current_segment_index] * self.direction_sign
                 self.object.worldPosition = self.start_position + displacement * progress
                 if current_time >= self.end_time:
-                    self.proceed_to_next_segment()
-            else:
-                if self.is_waiting_for_trigger and self.player_controller.platform != self.object:
-                    return
+                    if self.is_end_of_path() and self.delay > 0.0:
+                        self.state = STATE_DELAY
+                        self.delay_elapsed = 0.0
+                    else:
+                        self.proceed_to_next_segment()
+        elif self.state == STATE_DELAY:
+            delta = timestamp - self.prev_frame_timestamp
+            self.delay_elapsed += delta
+            if self.delay_elapsed >= self.delay:
+                self.state = STATE_RUNNING
                 self.proceed_to_next_segment()
-                self.is_active = True
+            # else:
+            #     if self.is_waiting_for_trigger and self.player_controller.platform != self.object:
+            #         return
+            #     self.proceed_to_next_segment()
+            #     self.is_active = True
                 # self.start_time = bge.logic.getClockTime()
                 # self.end_time = self.start_time + self.travel_times_by_segment[self.current_segment_index]
                 # self.start_position = self.waypoints[self.current_segment_index].worldPosition
+        self.prev_frame_timestamp = timestamp
+
+    def trigger(self):
+        self.proceed_to_next_segment()
+        self.is_active = True
+        self.state = STATE_RUNNING

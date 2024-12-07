@@ -6,23 +6,23 @@ MODE_REPEATABLE = "B. Repeatable"
 
 class TriggerOnEnter(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("Trigger Target", bpy.types.Object),
-        ("Tracked Object", bpy.types.Object),
+        ("TriggerTarget", bpy.types.Object),
+        ("TrackedObject", bpy.types.Object),
         ("Mode", {MODE_ONESHOT, MODE_REPEATABLE}),
         ("Range", 2.0),
-        ("Repeat Cooldown", 3.0),
-        ("Required Item", ""),
-        ("Required Item Count", 1),
+        ("RepeatCooldown", 3.0),
+        ("RequiredItem", ""),
+        ("RequiredItemCount", 1),
     ])
 
     def start(self, args):
-        self.trigger_target = self.object.scene.objects[args["Trigger Target"].name]
-        self.tracked_object = self.object.scene.objects[args["Tracked Object"].name]
+        self.trigger_target = self.object.scene.objects[args["TriggerTarget"].name]
+        self.tracked_object = self.object.scene.objects[args["TrackedObject"].name]
         self.mode = args["Mode"]
         self.range = args["Range"]
-        self.repeat_cooldown = args["Repeat Cooldown"]
-        self.required_item = args["Required Item"]
-        self.required_item_count = args["Required Item Count"]
+        self.repeat_cooldown = args["RepeatCooldown"]
+        self.required_item = args["RequiredItem"]
+        self.required_item_count = args["RequiredItemCount"]
         self.finished = False
         self.cooldown_elapsed = 0.0
         self.prev_frame_timestamp = 0.0
