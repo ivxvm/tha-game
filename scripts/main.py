@@ -20,15 +20,11 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.player_animator = PlayerAnimator(
             armature=self.model,
             speed=1.0,
-            pre_falling_eta=args['Pre Falling Eta'],
-            on_jump_animation_end=self.on_jump_animation_end)
+            pre_falling_eta=args['Pre Falling Eta'])
         self.platform_raycast_vec = Vector([0, 0, -1.5])
         self.platform = None
         self.prev_platform_position = Vector([0, 0, 0])
         self.last_platform_change_timestamp = bge.logic.getClockTime()
-
-    def on_jump_animation_end(self):
-        self.character.jump()
 
     def update(self):
         keyboard = bge.logic.keyboard.events
@@ -90,18 +86,17 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
-                self.player_animator.start_jumping()
+                self.character.jump()
 
         self.player_animator.update()
 
 class PlayerAnimator():
-    def __init__(self, armature, speed, pre_falling_eta, on_jump_animation_end):
+    def __init__(self, armature, speed, pre_falling_eta):
         self.armature = armature
         self.speed = speed
         self.pre_falling_eta = pre_falling_eta
         self.state = "IDLE"
         self.play_idle()
-        self.on_jump_animation_end = on_jump_animation_end
         self.last_grounded_timestamp = bge.logic.getClockTime()
         self.pre_falling_delta = 0
 
@@ -140,21 +135,8 @@ class PlayerAnimator():
                 self.pre_falling_delta = 0
         self.last_grounded_timestamp = current_grounded_timestamp
 
-    def start_jumping(self):
-        if self.state != "JUMPING":
-            print("start_jumping")
-            self.armature.stopAction()
-            self.play_jumping()
-            self.state = "JUMPING"
-            print("self.state", self.state)
-
     def update(self):
-        if self.state == "JUMPING":
-            if not self.armature.isPlayingAction():
-                self.on_jump_animation_end()
-                self.play_falling()
-                self.state = "FALLING"
-                print("self.state", self.state)
+        pass
 
     def play_idle(self):
         self.armature.playAction('Idle', 0, 16, 0, 0, 0, 1, 0, 0, self.speed * 0.5)

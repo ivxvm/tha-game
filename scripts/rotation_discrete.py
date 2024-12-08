@@ -1,9 +1,10 @@
-import bge, bpy
+import bge, math
 from collections import OrderedDict
+from mathutils import Matrix
 
-STATE_INIT = "INIT"
-STATE_RUNNING = "RUNNING"
-STATE_DELAY = "DELAY"
+AXIS_X = "X"
+AXIS_Y = "Y"
+AXIS_Z = "Z"
 
 START_TYPE_ON_LOAD = "OnLoad"
 START_TYPE_ON_TRIGGER = "OnTrigger"
@@ -11,10 +12,15 @@ START_TYPE_ON_TRIGGER = "OnTrigger"
 MOTION_TYPE_PING_PONG = "PingPong"
 MOTION_TYPE_CYCLE = "Cycle"
 
-class MotionWaypoints(bge.types.KX_PythonComponent):
+STATE_INIT = "INIT"
+STATE_RUNNING = "RUNNING"
+STATE_DELAY = "DELAY"
+
+class RotationDiscrete(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("TravelTime", 10.0),
-        ("PathTracker", bpy.types.Object),
+        ("Axis", {AXIS_X, AXIS_Y, AXIS_Z}),
+        ("Angle", 90.0),
+        ("Duration", 5.0),
         ("StartType", {START_TYPE_ON_LOAD, START_TYPE_ON_TRIGGER}),
         ("MotionType", {MOTION_TYPE_PING_PONG, MOTION_TYPE_CYCLE}),
         ("AutoLoop", False),
@@ -22,17 +28,19 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
     ])
 
     def start(self, args):
-        self.total_travel_time = args["TravelTime"]
-        self.path_tracker = self.object.scene.objects[args["PathTracker"].name]
-        self.auto_loop = args["AutoLoop"]
+        self.axis = args["Axis"]
+        self.angle = math.radians(args["Angle"])
+        self.duration = args["Duration"]
         self.start_type = args["StartType"]
         self.motion_type = args["MotionType"]
+        self.auto_loop = args["AutoLoop"]
         self.delay = args["Delay"]
         self.state = STATE_RUNNING
         self.is_active = self.start_type == START_TYPE_ON_LOAD
         self.is_moving_backwards = False
-        self.motion_elapsed = 0.0
+        self.rotation_elapsed = 0.0
         self.delay_elapsed = 0.0
+        self.initial_orientation = self.object.localOrientation.copy()
         self.prev_frame_timestamp = bge.logic.getClockTime()
 
     def update(self):
@@ -40,15 +48,17 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
         if self.state == STATE_RUNNING:
             if self.is_active:
                 delta = timestamp - self.prev_frame_timestamp
-                self.motion_elapsed += delta
-                progress = min(1, self.motion_elapsed / self.total_travel_time)
+                self.rotation_elapsed += delta
+                progress = min(1, self.rotation_elapsed / self.duration)
                 if self.is_moving_backwards:
                     progress = 1 - progress
-                self.path_tracker.blenderObject.constraints["Follow Path"].offset_factor = progress
-                self.object.worldPosition = self.path_tracker.worldPosition
-                if self.motion_elapsed >= self.total_travel_time:
+                rotation_matrix = self.initial_orientation.copy()
+                rotation_matrix.rotate(Matrix.Rotation(progress * self.angle, 4, self.axis))
+                self.object.localOrientation = rotation_matrix
+                if self.rotation_elapsed >= self.duration:
                     if self.motion_type == MOTION_TYPE_PING_PONG:
                         self.is_moving_backwards = not self.is_moving_backwards
+                    self.initial_orientation = self.object.localOrientation.copy()
                     self.state = STATE_DELAY
                     self.delay_elapsed = 0.0
                     self.is_active = False
@@ -58,7 +68,7 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
             if self.delay_elapsed >= self.delay:
                 self.is_active = self.auto_loop
                 self.state = STATE_RUNNING
-                self.motion_elapsed = 0.0
+                self.rotation_elapsed = 0.0
         self.prev_frame_timestamp = timestamp
 
     def trigger(self):

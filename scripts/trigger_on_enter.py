@@ -37,6 +37,7 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
                 self.cooldown_elapsed += delta
                 if self.cooldown_elapsed >= self.repeat_cooldown:
                     self.finished = False
+                    self.object.setVisible(True)
                     self.cooldown_elapsed = 0.0
         else:
             distance = (self.tracked_object.worldPosition - self.object.worldPosition).length
@@ -49,6 +50,7 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
                         except AttributeError:
                             pass
                     self.finished = True
+                    self.object.setVisible(False)
                     if self.mode == MODE_ONESHOT:
                         self.object.endObject()
                 else:
