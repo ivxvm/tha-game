@@ -2,6 +2,9 @@ import bge
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
+POWERUP_TRIPLE_JUMP = "Triple Jump"
+POWERUP_FLAMETHROWER = "Flamethrower"
+
 class PlayerController(bge.types.KX_PythonComponent):
     """My take on platformer-like 3rd person player controller"""
 
@@ -24,7 +27,9 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.platform_raycast_vec = Vector([0, 0, -1.5])
         self.platform = None
         self.prev_platform_position = Vector([0, 0, 0])
+        self.prev_platform_orientation = Matrix.Rotation(0, 4, "Z")
         self.last_platform_change_timestamp = bge.logic.getClockTime()
+        self.powerup = ""
 
     def update(self):
         keyboard = bge.logic.keyboard.events
@@ -70,6 +75,7 @@ class PlayerController(bge.types.KX_PythonComponent):
                     self.platform = hit_target
                     platform_changed = True
                     self.prev_platform_position = Vector(self.platform.worldPosition)
+                    self.prev_platform_orientation = self.platform.worldOrientation.copy()
             else:
                 if self.platform:
                     self.platform = None
@@ -80,9 +86,18 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         if self.platform:
             current_platform_position = Vector(self.platform.worldPosition)
-            deltas = current_platform_position - self.prev_platform_position
-            self.object.applyMovement(deltas, False)
+            movement_deltas = current_platform_position - self.prev_platform_position
+            self.object.applyMovement(movement_deltas, False)
             self.prev_platform_position = current_platform_position
+
+            current_platform_orientation = self.platform.worldOrientation
+            delta_rotation_z = (current_platform_orientation.to_euler().z - self.prev_platform_orientation.to_euler().z)
+            if delta_rotation_z != 0.0:
+                v = self.object.worldPosition - current_platform_position
+                v.rotate(Matrix.Rotation(delta_rotation_z, 4, "Z"))
+                self.object.worldPosition = current_platform_position + v
+                self.object.applyRotation(Vector([0, 0, delta_rotation_z]), False)
+                self.prev_platform_orientation = current_platform_orientation.copy()
 
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
