@@ -2,7 +2,7 @@ import bge
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
-POWERUP_TRIPLE_JUMP = "Triple Jump"
+POWERUP_MULTI_JUMP = "Multi Jump"
 POWERUP_FLAMETHROWER = "Flamethrower"
 
 class PlayerController(bge.types.KX_PythonComponent):
@@ -30,6 +30,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.prev_platform_orientation = Matrix.Rotation(0, 4, "Z")
         self.last_platform_change_timestamp = bge.logic.getClockTime()
         self.powerup = ""
+        self.multijumps_left = 0
 
     def update(self):
         keyboard = bge.logic.keyboard.events
@@ -102,6 +103,13 @@ class PlayerController(bge.types.KX_PythonComponent):
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
                 self.character.jump()
+            elif self.powerup == POWERUP_MULTI_JUMP:
+                if keyboard[bge.events.SPACEKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED:
+                    self.character.jump()
+                    self.player_animator.play_jumping()
+                    self.multijumps_left -= 1
+                    if self.multijumps_left <= 0:
+                        self.powerup = ""
 
         self.player_animator.update()
 

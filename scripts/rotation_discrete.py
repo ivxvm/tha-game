@@ -35,6 +35,7 @@ class RotationDiscrete(bge.types.KX_PythonComponent):
         self.motion_type = args["MotionType"]
         self.auto_loop = args["AutoLoop"]
         self.delay = args["Delay"]
+        self.paused = False
         self.state = STATE_RUNNING
         self.is_active = self.start_type == START_TYPE_ON_LOAD
         self.is_moving_backwards = False
@@ -44,6 +45,8 @@ class RotationDiscrete(bge.types.KX_PythonComponent):
         self.prev_frame_timestamp = bge.logic.getClockTime()
 
     def update(self):
+        if self.paused:
+            return
         timestamp = bge.logic.getClockTime()
         if self.state == STATE_RUNNING:
             if self.is_active:

@@ -27,6 +27,7 @@ class AnimateOnTrigger(bge.types.KX_PythonComponent):
         self.prev_frame_timestamp = 0
         self.start_position = self.object.worldPosition.copy()
 
+
     def update(self):
         if self.active and not self.finished:
             timestamp = bge.logic.getClockTime()
@@ -39,6 +40,8 @@ class AnimateOnTrigger(bge.types.KX_PythonComponent):
                 self.object.blenderObject.data.update()
             elif self.property == "@Z":
                 self.object.worldPosition = self.start_position + Vector([0, 0, new_value])
+            elif self.property == "@scale":
+                self.object.worldScale = Vector([new_value, new_value, new_value])
             else:
                 self.object.blenderObject[self.property] = new_value
             self.prev_frame_timestamp = timestamp

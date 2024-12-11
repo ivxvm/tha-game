@@ -14,6 +14,7 @@ MOTION_TYPE_CYCLE = "Cycle"
 class MotionWaypoints(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("TravelTime", 10.0),
+        ("StartTimeOffset", 0.0),
         ("PathTracker", bpy.types.Object),
         ("StartType", {START_TYPE_ON_LOAD, START_TYPE_ON_TRIGGER}),
         ("MotionType", {MOTION_TYPE_PING_PONG, MOTION_TYPE_CYCLE}),
@@ -31,7 +32,7 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
         self.state = STATE_RUNNING
         self.is_active = self.start_type == START_TYPE_ON_LOAD
         self.is_moving_backwards = False
-        self.motion_elapsed = 0.0
+        self.motion_elapsed = args["StartTimeOffset"]
         self.delay_elapsed = 0.0
         self.prev_frame_timestamp = bge.logic.getClockTime()
 
