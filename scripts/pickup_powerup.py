@@ -64,8 +64,6 @@ class PickupPowerup(bge.types.KX_PythonComponent):
                 return component
 
     def pickup(self):
+        setattr(self.player_controller, "powerup", self.powerup)
         if self.powerup == POWERUP_MULTI_JUMP:
-            setattr(self.player_controller, "powerup", self.powerup)
             setattr(self.player_controller, "multijumps_left", int(self.parameter))
-        elif self.powerup == POWERUP_FLAMETHROWER:
-            pass

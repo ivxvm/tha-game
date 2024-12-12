@@ -1,4 +1,4 @@
-import bge
+import bge, bpy
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
@@ -12,18 +12,21 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Move Speed", 0.1),
         ("Pre Falling Eta", 0.1),
         ("Platform Change Cooldown", 0.1),
+        ("Flamethrower Duration", 2.0)
     ])
 
     def start(self, args):
-        self.move_speed = args['Move Speed']
-        self.platform_change_cooldown = args['Platform Change Cooldown']
+        self.move_speed = args["Move Speed"]
+        self.platform_change_cooldown = args["Platform Change Cooldown"]
+        self.flamethrower_duration = args["Flamethrower Duration"]
+        self.particle_player = self.object.scene.objects["Player.ParticlePlayer"].components["ParticlePlayer"]
         self.character = bge.constraints.getCharacter(self.object)
-        self.camera_pivot = self.object.children['Player.CameraPivot']
-        self.model = self.object.children['Player.Model']
+        self.camera_pivot = self.object.children["Player.CameraPivot"]
+        self.model = self.object.children["Player.Model"]
         self.player_animator = PlayerAnimator(
             armature=self.model,
             speed=1.0,
-            pre_falling_eta=args['Pre Falling Eta'])
+            pre_falling_eta=args["Pre Falling Eta"])
         self.platform_raycast_vec = Vector([0, 0, -1.5])
         self.platform = None
         self.prev_platform_position = Vector([0, 0, 0])
@@ -34,6 +37,7 @@ class PlayerController(bge.types.KX_PythonComponent):
 
     def update(self):
         keyboard = bge.logic.keyboard.events
+        mouse = bge.logic.mouse.events
 
         speed_x = 0
         speed_y = 0
@@ -63,7 +67,7 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         if is_running:
             move_vec.normalize()
-            self.model.worldOrientation = move_vec.to_track_quat('Y','Z').to_euler()
+            self.model.worldOrientation = move_vec.to_track_quat("Y","Z").to_euler()
 
         now = bge.logic.getClockTime()
 
@@ -111,6 +115,14 @@ class PlayerController(bge.types.KX_PythonComponent):
                     if self.multijumps_left <= 0:
                         self.powerup = ""
 
+        if mouse[bge.events.LEFTMOUSE]:
+            if self.powerup == POWERUP_FLAMETHROWER:
+                self.player_animator.set_casting(True)
+                self.particle_player.play(
+                    self.flamethrower_duration,
+                    lambda: self.player_animator.set_casting(False))
+                self.powerup = ""
+
         self.player_animator.update()
 
 class PlayerAnimator():
@@ -145,7 +157,7 @@ class PlayerAnimator():
                 self.play_idle()
                 self.state = "IDLE"
                 print("self.state", self.state)
-        elif self.state != "JUMPING":
+        elif self.state != "JUMPING" and self.state != "CASTING":
             if not value:
                 self.pre_falling_delta += current_grounded_timestamp - self.last_grounded_timestamp
                 if self.pre_falling_delta > self.pre_falling_eta:
@@ -158,17 +170,30 @@ class PlayerAnimator():
                 self.pre_falling_delta = 0
         self.last_grounded_timestamp = current_grounded_timestamp
 
+    def set_casting(self, value):
+        if value and self.state != "CASTING":
+            self.armature.stopAction()
+            self.play_casting()
+            self.state = "CASTING"
+        elif not value and self.state == "CASTING":
+            self.armature.stopAction()
+            self.play_idle()
+            self.state = "IDLE"
+
     def update(self):
         pass
 
     def play_idle(self):
-        self.armature.playAction('Idle', 0, 16, 0, 0, 0, 1, 0, 0, self.speed * 0.5)
+        self.armature.playAction("Idle", 0, 16, 0, 0, 0, 1, 0, 0, self.speed * 0.5)
 
     def play_running(self):
-        self.armature.playAction('Running', 0, 20, 0, 0, 0, 1, 0, 0, self.speed)
+        self.armature.playAction("Running", 0, 20, 0, 0, 0, 1, 0, 0, self.speed)
 
     def play_jumping(self):
-        self.armature.playAction('Jumping', 4, 8, 0, 0, 0, 0, 0, 0, self.speed * 2)
+        self.armature.playAction("Jumping", 4, 8, 0, 0, 0, 0, 0, 0, self.speed * 2)
 
     def play_falling(self):
-        self.armature.playAction('Falling', 0, 32, 0, 0, 0, 1, 0, 0, self.speed)
+        self.armature.playAction("Falling", 0, 32, 0, 0, 0, 1, 0, 0, self.speed)
+
+    def play_casting(self):
+        self.armature.playAction("Casting", 0, 16, 0, 0, 0, 1, 0, 0, self.speed)
