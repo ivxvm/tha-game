@@ -118,12 +118,18 @@ class PlayerController(bge.types.KX_PythonComponent):
         if mouse[bge.events.LEFTMOUSE]:
             if self.powerup == POWERUP_FLAMETHROWER:
                 self.player_animator.set_casting(True)
-                self.particle_player.play(
-                    self.flamethrower_duration,
-                    lambda: self.player_animator.set_casting(False))
-                self.powerup = ""
+                self.particle_player.play(self.flamethrower_duration, self.on_flamethrower_end)
+
+        if self.powerup == POWERUP_FLAMETHROWER:
+            if self.player_animator.is_playing:
+                # raycast check hit enemy
+                pass
 
         self.player_animator.update()
+
+    def on_flamethrower_end(self):
+        self.player_animator.set_casting(False)
+        self.powerup = ""
 
 class PlayerAnimator():
     def __init__(self, armature, speed, pre_falling_eta):

@@ -12,23 +12,23 @@ class ParticlePlayer(bge.types.KX_PythonComponent):
     def start(self, args):
         self.particle_system = bpy.data.particles[args["ParticleSystemName"]]
         self.timeline = self.object.scene.objects["Timeline"].components["Timeline"]
-        self.state = STATE_PAUSED
+        self.is_playing = False
         self.remaining_duration = 0
         self.callback = lambda: None
         self.prev_frame_timestamp = bge.logic.getClockTime()
 
     def update(self):
         timestamp = bge.logic.getClockTime()
-        if self.state == STATE_PLAYING:
+        if self.is_playing:
             delta = timestamp - self.prev_frame_timestamp
             self.remaining_duration -= delta
             if self.remaining_duration <= 0:
-                self.state = STATE_PAUSED
+                self.is_playing = False
                 self.callback()
         self.prev_frame_timestamp = timestamp
 
     def play(self, duration, callback):
-        self.state = STATE_PLAYING
+        self.is_playing = True
         self.remaining_duration = duration
         self.callback = callback
         self.particle_system.frame_start = self.timeline.current_frame
