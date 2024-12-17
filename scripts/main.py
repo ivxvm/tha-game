@@ -2,6 +2,10 @@ import bge, bpy
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
+HIT_COOLDOWN = 1.0
+HIT_KNOCKBACK = 50.0
+HIT_KNOCKBACK_DURATION = 0.25
+
 POWERUP_MULTI_JUMP = "Multi Jump"
 POWERUP_FLAMETHROWER = "Flamethrower"
 
@@ -34,8 +38,16 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.last_platform_change_timestamp = bge.logic.getClockTime()
         self.powerup = ""
         self.multijumps_left = 0
+        self.hit_cooldown = 0.0
+        self.force_vector = Vector([0, 0, 0])
+        self.force_duration = 0.0
+        self.force_remaining_duration = 0.0
+        self.prev_frame_timestamp = bge.logic.getClockTime()
 
     def update(self):
+        timestamp = bge.logic.getClockTime()
+        delta = timestamp - self.prev_frame_timestamp
+
         keyboard = bge.logic.keyboard.events
         mouse = bge.logic.mouse.events
 
@@ -104,6 +116,12 @@ class PlayerController(bge.types.KX_PythonComponent):
                 self.object.applyRotation(Vector([0, 0, delta_rotation_z]), False)
                 self.prev_platform_orientation = current_platform_orientation.copy()
 
+        if self.force_remaining_duration > 0:
+            self.object.applyMovement(self.force_vector * delta, False)
+            self.force_remaining_duration -= delta
+            self.force_vector *= (1.0 - (delta / self.force_duration))
+            print("self.force_vector", self.force_vector)
+
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
                 self.character.jump()
@@ -121,15 +139,26 @@ class PlayerController(bge.types.KX_PythonComponent):
                 self.particle_player.play(self.flamethrower_duration, self.on_flamethrower_end)
 
         if self.powerup == POWERUP_FLAMETHROWER:
-            if self.player_animator.is_playing:
+            if self.particle_player.is_playing:
                 # raycast check hit enemy
                 pass
 
+        self.hit_cooldown -= delta
+
         self.player_animator.update()
+
+        self.prev_frame_timestamp = timestamp
 
     def on_flamethrower_end(self):
         self.player_animator.set_casting(False)
         self.powerup = ""
+
+    def hit(self, attack_vector):
+        if self.hit_cooldown <= 0:
+            self.force_vector = attack_vector.normalized() * HIT_KNOCKBACK
+            self.force_duration = HIT_KNOCKBACK_DURATION
+            self.force_remaining_duration = HIT_KNOCKBACK_DURATION
+            self.hit_cooldown = HIT_COOLDOWN
 
 class PlayerAnimator():
     def __init__(self, armature, speed, pre_falling_eta):

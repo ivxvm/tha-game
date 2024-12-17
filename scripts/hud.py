@@ -1,17 +1,17 @@
-import bge
+import bge, bpy
 from collections import OrderedDict
 
 class ItemAmountInvalidator(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("Target Object Name", "Player.Root"),
+        ("Target Object", bpy.types.Object),
         ("Target Item Id", "coin"),
     ])
 
     def start(self, args):
-        target_object = self.object.scene.objects[args["Target Object Name"]]
-        self.inventory = target_object.components["Inventory"]
+        target_object = self.object.scene.objects[args["Target Object"].name]
         self.item_id = args["Target Item Id"]
-        self.last_item_amount = self.inventory.items.get(self.item_id, 0)
+        self.inventory = target_object.components["Inventory"]
+        self.last_item_amount = 0
 
     def update(self):
         current_item_amount = self.inventory.items.get(self.item_id, 0)

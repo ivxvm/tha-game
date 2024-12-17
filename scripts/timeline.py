@@ -3,7 +3,7 @@ from collections import OrderedDict
 
 class Timeline(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("Timeline Framerate", 24)
+        ("Timeline Framerate", 60)
     ])
 
     def start(self, args):
