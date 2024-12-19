@@ -14,10 +14,13 @@ class WeaponTrail(bge.types.KX_PythonComponent):
         self.player_controller = self.player.components["PlayerController"]
         self.reinstance_interval = args["Reinstance Physics Mesh Interval"]
         self.cooldown = 0
+        self.is_active = False
         self.prev_frame_timestamp = bge.logic.getClockTime()
         self.object.collisionCallbacks.append(self.onCollision)
 
     def update(self):
+        if not self.is_active:
+            return
         timestamp = bge.logic.getClockTime()
         delta = timestamp - self.prev_frame_timestamp
         self.cooldown -= delta
@@ -28,12 +31,19 @@ class WeaponTrail(bge.types.KX_PythonComponent):
 
     def onCollision(self, other, point):
         if other == self.player:
-            # print("point", point)
             self.player_controller.hit(other.worldPosition - self.owner.worldPosition)
-        # pickup = other.components.get("Pickup")
-        # if pickup and pickup.active:
-            # print(self, "collided with pickup", pickup.item_id)
-            # self.items[pickup.item_id] = self.items.get(pickup.item_id, 0) + pickup.item_amount
-            # pickup.active = False
-            # other.endObject()
-            # print(self.items)
+
+    def activate(self):
+        self.object.worldPosition = self.owner.worldPosition
+        for modifier in self.object.blenderObject.modifiers:
+            modifier.show_in_editmode = True
+            modifier.show_viewport = True
+            modifier.show_render = True
+        self.is_active = True
+
+    def deactivate(self):
+        for modifier in self.object.blenderObject.modifiers:
+            modifier.show_in_editmode = False
+            modifier.show_viewport = False
+            modifier.show_render = False
+        self.is_active = False
