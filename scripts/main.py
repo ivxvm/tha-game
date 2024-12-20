@@ -2,10 +2,6 @@ import bge, bpy
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
-HIT_COOLDOWN = 1.0
-HIT_KNOCKBACK = 50.0
-HIT_KNOCKBACK_DURATION = 0.25
-
 POWERUP_MULTI_JUMP = "Multi Jump"
 POWERUP_FLAMETHROWER = "Flamethrower"
 
@@ -16,13 +12,16 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Move Speed", 0.1),
         ("Pre Falling Eta", 0.1),
         ("Platform Change Cooldown", 0.1),
-        ("Flamethrower Duration", 2.0)
+        ("Flamethrower Duration", 2.0),
+        ("Proxy Physics", bpy.types.Object),
     ])
 
     def start(self, args):
         self.move_speed = args["Move Speed"]
         self.platform_change_cooldown = args["Platform Change Cooldown"]
         self.flamethrower_duration = args["Flamethrower Duration"]
+        self.proxy_physics = self.object.scene.objects[args["Proxy Physics"].name].components["ProxyPhysics"]
+        self.proxy_physics.on_hit = self.handle_hit_proxy_physics
         self.particle_player = self.object.scene.objects["Player.ParticlePlayer"].components["ParticlePlayer"]
         self.character = bge.constraints.getCharacter(self.object)
         self.camera_pivot = self.object.children["Player.CameraPivot"]
@@ -38,16 +37,8 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.last_platform_change_timestamp = bge.logic.getClockTime()
         self.powerup = ""
         self.multijumps_left = 0
-        self.hit_cooldown = 0.0
-        self.force_vector = Vector([0, 0, 0])
-        self.force_duration = 0.0
-        self.force_remaining_duration = 0.0
-        self.prev_frame_timestamp = bge.logic.getClockTime()
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
-        delta = timestamp - self.prev_frame_timestamp
-
         keyboard = bge.logic.keyboard.events
         mouse = bge.logic.mouse.events
 
@@ -116,12 +107,6 @@ class PlayerController(bge.types.KX_PythonComponent):
                 self.object.applyRotation(Vector([0, 0, delta_rotation_z]), False)
                 self.prev_platform_orientation = current_platform_orientation.copy()
 
-        if self.force_remaining_duration > 0:
-            self.object.applyMovement(self.force_vector * delta, False)
-            self.force_remaining_duration -= delta
-            self.force_vector *= (1.0 - (delta / self.force_duration))
-            print("self.force_vector", self.force_vector)
-
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
                 self.character.jump()
@@ -143,22 +128,16 @@ class PlayerController(bge.types.KX_PythonComponent):
                 # raycast check hit enemy
                 pass
 
-        self.hit_cooldown -= delta
-
         self.player_animator.update()
-
-        self.prev_frame_timestamp = timestamp
 
     def on_flamethrower_end(self):
         self.player_animator.set_casting(False)
         self.powerup = ""
 
-    def hit(self, attack_vector):
-        if self.hit_cooldown <= 0:
-            self.force_vector = attack_vector.normalized() * HIT_KNOCKBACK
-            self.force_duration = HIT_KNOCKBACK_DURATION
-            self.force_remaining_duration = HIT_KNOCKBACK_DURATION
-            self.hit_cooldown = HIT_COOLDOWN
+    def handle_hit_proxy_physics(self, direction, knockback):
+        if not self.proxy_physics.is_active:
+            self.proxy_physics.activate()
+            self.proxy_physics.object.setLinearVelocity(direction * knockback)
 
 class PlayerAnimator():
     def __init__(self, armature, speed, pre_falling_eta):

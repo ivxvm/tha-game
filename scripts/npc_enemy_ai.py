@@ -79,6 +79,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.movement.target_position = self.nav.get_next_path_position()
             if self.movement.is_still:
                 self.animation_player.play(self.idle_animation.name)
+                self.movement.rotate_towards(self.player)
                 if not self.is_target_visible(self.player):
                     self.transition_idle()
             else:
