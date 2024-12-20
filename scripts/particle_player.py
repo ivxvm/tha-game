@@ -1,5 +1,6 @@
 import bge, bpy
 from collections import OrderedDict
+import constants
 
 STATE_PAUSED = "STATE_PAUSED"
 STATE_PLAYING = "STATE_PLAYING"
@@ -11,6 +12,8 @@ class ParticlePlayer(bge.types.KX_PythonComponent):
 
     def start(self, args):
         self.particle_system = bpy.data.particles[args["ParticleSystemName"]]
+        self.particle_system.frame_start = constants.LAST_TIMELINE_FRAME + 1
+        self.particle_system.frame_end = constants.LAST_TIMELINE_FRAME + 1
         self.timeline = self.object.scene.objects["Timeline"].components["Timeline"]
         self.is_playing = False
         self.remaining_duration = 0
