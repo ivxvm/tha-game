@@ -1,4 +1,4 @@
-import bge, bpy
+import bge, bpy, deltatime
 from collections import OrderedDict
 
 def distance_xy(vec_a, vec_b):
@@ -21,14 +21,12 @@ class Navigator(bge.types.KX_PythonComponent):
         self.target_position = self.object.worldPosition
         self.path = []
         self.current_path_index = 0
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
-        delta = timestamp - self.prev_frame_timestamp
+        delta = deltatime.update(self)
         if self.debounce_cooldown > 0:
             self.debounce_cooldown -= delta
-        self.prev_frame_timestamp = timestamp
 
     def is_navigation_finished(self):
         return distance_xy(self.object.worldPosition, self.target_position) <= self.distance_eta

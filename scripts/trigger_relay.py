@@ -1,9 +1,8 @@
 import bge, bpy
 from collections import OrderedDict
+import deltatime
 
 class TriggerRelay(bge.types.KX_PythonComponent):
-    # Put your arguments here of the format ("key", default_value).
-    # These values are exposed to the UI.
     args = OrderedDict([
         ("Delay1", 0.0),
         ("Target1", bpy.types.Object),
@@ -26,12 +25,11 @@ class TriggerRelay(bge.types.KX_PythonComponent):
         self.current_index = 0
         self.elapsed = 0.0
         self.is_active = False
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
+        delta = deltatime.update(self)
         if self.is_active:
-            delta = timestamp - self.prev_frame_timestamp
             self.elapsed += delta
             while True:
                 current_delay = self.delays[self.current_index]
@@ -51,7 +49,6 @@ class TriggerRelay(bge.types.KX_PythonComponent):
                     break
             if self.current_index > len(self.delays):
                 self.is_active = False
-        self.prev_frame_timestamp = timestamp
 
     def trigger(self):
         if not self.is_active:

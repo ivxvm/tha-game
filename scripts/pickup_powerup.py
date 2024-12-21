@@ -1,4 +1,4 @@
-import bge, bpy
+import bge, bpy, deltatime
 from collections import OrderedDict
 
 POWERUP_MULTI_JUMP = "Multi Jump"
@@ -30,11 +30,10 @@ class PickupPowerup(bge.types.KX_PythonComponent):
         self.wobble_component = self.find_component("MotionSine")
         self.cooldown_elapsed = 0.0
         self.state = STATE_ACTIVE
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
-        delta = timestamp - self.prev_frame_timestamp
+        delta = deltatime.update(self)
         if self.state == STATE_ACTIVE:
             distance = (self.object.worldPosition - self.player.worldPosition).magnitude
             if distance <= self.range:
@@ -55,7 +54,6 @@ class PickupPowerup(bge.types.KX_PythonComponent):
                 setattr(self.rotation_component, "paused", False)
                 setattr(self.wobble_component, "paused", False)
                 self.state = STATE_ACTIVE
-        self.prev_frame_timestamp = timestamp
 
     def find_component(self, name):
         for child in self.object.children:

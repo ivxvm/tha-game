@@ -1,4 +1,4 @@
-import bge
+import bge, deltatime
 from mathutils import Vector
 from collections import OrderedDict
 
@@ -24,15 +24,14 @@ class AnimateOnTrigger(bge.types.KX_PythonComponent):
         self.elapsed = 0
         self.active = False
         self.finished = False
-        self.prev_frame_timestamp = 0
         self.start_position = self.object.worldPosition.copy()
+        deltatime.init(self)
 
 
     def update(self):
+        delta = deltatime.update(self)
         if self.active and not self.finished:
-            timestamp = bge.logic.getClockTime()
-            self.elapsed += timestamp - self.prev_frame_timestamp
-            print(self.elapsed)
+            self.elapsed += delta
             progress = min(1.0, self.elapsed / self.duration)
             new_value = self.value_from + progress * self.value_range
             if self.is_geonode_input:
@@ -44,10 +43,7 @@ class AnimateOnTrigger(bge.types.KX_PythonComponent):
                 self.object.worldScale = Vector([new_value, new_value, new_value])
             else:
                 self.object.blenderObject[self.property] = new_value
-            self.prev_frame_timestamp = timestamp
             self.finished = self.elapsed >= self.duration
 
     def trigger(self):
-        print("AnimateOnTrigger is active now")
-        self.prev_frame_timestamp = bge.logic.getClockTime()
         self.active = True

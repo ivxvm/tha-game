@@ -1,4 +1,4 @@
-import bge, bpy, math
+import bge, math, deltatime
 from collections import OrderedDict
 from mathutils import Vector
 
@@ -16,16 +16,14 @@ class MotionSine(bge.types.KX_PythonComponent):
         self.paused = False
         self.elapsed = 0.0
         self.initial_position = self.object.worldPosition.copy()
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
         if self.paused:
             return
-        timestamp = bge.logic.getClockTime()
-        delta = timestamp - self.prev_frame_timestamp
+        delta = deltatime.update(self)
         self.elapsed += delta
         progress = self.elapsed / self.duration
         new_position = self.initial_position + self.direction * math.sin(self.phase + progress * 2 * math.pi)
         self.object.blenderObject.location = new_position
         self.object.worldPosition = new_position
-        self.prev_frame_timestamp = timestamp

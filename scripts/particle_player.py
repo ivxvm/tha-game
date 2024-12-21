@@ -1,6 +1,5 @@
-import bge, bpy
+import bge, bpy, constants, deltatime
 from collections import OrderedDict
-import constants
 
 STATE_PAUSED = "STATE_PAUSED"
 STATE_PLAYING = "STATE_PLAYING"
@@ -18,17 +17,15 @@ class ParticlePlayer(bge.types.KX_PythonComponent):
         self.is_playing = False
         self.remaining_duration = 0
         self.callback = lambda: None
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
+        delta = deltatime.update(self)
         if self.is_playing:
-            delta = timestamp - self.prev_frame_timestamp
             self.remaining_duration -= delta
             if self.remaining_duration <= 0:
                 self.is_playing = False
                 self.callback()
-        self.prev_frame_timestamp = timestamp
 
     def play(self, duration, callback):
         self.is_playing = True

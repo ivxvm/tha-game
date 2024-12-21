@@ -1,4 +1,4 @@
-import bge, bpy
+import bge, bpy, deltatime
 from collections import OrderedDict
 
 STATE_INIT = "INIT"
@@ -34,13 +34,12 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
         self.is_moving_backwards = False
         self.motion_elapsed = args["StartTimeOffset"]
         self.delay_elapsed = 0.0
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
+        delta = deltatime.update(self)
         if self.state == STATE_RUNNING:
             if self.is_active:
-                delta = timestamp - self.prev_frame_timestamp
                 self.motion_elapsed += delta
                 progress = min(1, self.motion_elapsed / self.total_travel_time)
                 if self.is_moving_backwards:
@@ -54,13 +53,11 @@ class MotionWaypoints(bge.types.KX_PythonComponent):
                     self.delay_elapsed = 0.0
                     self.is_active = False
         elif self.state == STATE_DELAY:
-            delta = timestamp - self.prev_frame_timestamp
             self.delay_elapsed += delta
             if self.delay_elapsed >= self.delay:
                 self.is_active = self.auto_loop
                 self.state = STATE_RUNNING
                 self.motion_elapsed = 0.0
-        self.prev_frame_timestamp = timestamp
 
     def trigger(self):
         if self.state == STATE_RUNNING:

@@ -1,4 +1,4 @@
-import bge, math
+import bge, math, deltatime
 from collections import OrderedDict
 from mathutils import Matrix
 
@@ -42,15 +42,14 @@ class RotationDiscrete(bge.types.KX_PythonComponent):
         self.rotation_elapsed = 0.0
         self.delay_elapsed = 0.0
         self.initial_orientation = self.object.localOrientation.copy()
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
         if self.paused:
             return
-        timestamp = bge.logic.getClockTime()
+        delta = deltatime.update(self)
         if self.state == STATE_RUNNING:
             if self.is_active:
-                delta = timestamp - self.prev_frame_timestamp
                 self.rotation_elapsed += delta
                 progress = min(1, self.rotation_elapsed / self.duration)
                 if self.is_moving_backwards:
@@ -66,13 +65,11 @@ class RotationDiscrete(bge.types.KX_PythonComponent):
                     self.delay_elapsed = 0.0
                     self.is_active = False
         elif self.state == STATE_DELAY:
-            delta = timestamp - self.prev_frame_timestamp
             self.delay_elapsed += delta
             if self.delay_elapsed >= self.delay:
                 self.is_active = self.auto_loop
                 self.state = STATE_RUNNING
                 self.rotation_elapsed = 0.0
-        self.prev_frame_timestamp = timestamp
 
     def trigger(self):
         if self.state == STATE_RUNNING:

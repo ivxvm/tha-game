@@ -1,4 +1,4 @@
-import bge, bpy
+import bge, bpy, deltatime
 from collections import OrderedDict
 
 PATROLLING_EPSILON = 1.0
@@ -40,11 +40,10 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.patrolling_waypoints = []
         self.patrolling_target_waypoint_index = 0
         self.speed = 1.0
-        self.prev_frame_timestamp = bge.logic.getClockTime()
+        deltatime.init(self)
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
-        delta = timestamp - self.prev_frame_timestamp
+        delta = deltatime.update(self)
         if self.state == STATE_INIT:
             self.transition_idle()
         elif self.state == STATE_IDLE:
@@ -57,7 +56,6 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.process_stalking(delta)
         elif self.state == STATE_ATTACKING:
             self.process_attacking(delta)
-        self.prev_frame_timestamp = timestamp
 
     def process_idle(self, delta):
         self.idle_time += delta

@@ -1,5 +1,6 @@
 import bge, bpy
 from collections import OrderedDict
+import deltatime
 
 MODE_ONESHOT = "A. Oneshot"
 MODE_REPEATABLE = "B. Repeatable"
@@ -25,15 +26,14 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
         self.required_item_count = args["RequiredItemCount"]
         self.finished = False
         self.cooldown_elapsed = 0.0
-        self.prev_frame_timestamp = 0.0
         if self.required_item:
             self.inventory = self.tracked_object.components["Inventory"]
+        deltatime.init(self)
 
     def update(self):
-        timestamp = bge.logic.getClockTime()
+        delta = deltatime.update(self)
         if self.finished:
             if self.mode == MODE_REPEATABLE:
-                delta = timestamp - self.prev_frame_timestamp
                 self.cooldown_elapsed += delta
                 if self.cooldown_elapsed >= self.repeat_cooldown:
                     self.finished = False
@@ -55,4 +55,3 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
                         self.object.endObject()
                 else:
                     print(self.required_item, "is needed")
-        self.prev_frame_timestamp = timestamp
