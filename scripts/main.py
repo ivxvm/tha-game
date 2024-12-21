@@ -1,4 +1,4 @@
-import bge, bpy
+import bge, bpy, constants
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
@@ -37,6 +37,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.last_platform_change_timestamp = bge.logic.getClockTime()
         self.powerup = ""
         self.multijumps_left = 0
+        self.is_casting = False
 
     def update(self):
         keyboard = bge.logic.keyboard.events
@@ -45,15 +46,17 @@ class PlayerController(bge.types.KX_PythonComponent):
         speed_x = 0
         speed_y = 0
 
-        if keyboard[bge.events.AKEY]:
-            speed_x -= 1
-        if keyboard[bge.events.DKEY]:
-            speed_x += 1
+        if not self.is_casting:
+            if keyboard[bge.events.AKEY]:
+                speed_x -= 1
+            if keyboard[bge.events.DKEY]:
+                speed_x += 1
 
-        if keyboard[bge.events.WKEY]:
-            speed_y += 1
-        if keyboard[bge.events.SKEY]:
-            speed_y -= 1
+            if keyboard[bge.events.WKEY]:
+                speed_y += 1
+            if keyboard[bge.events.SKEY]:
+                speed_y -= 1
+
 
         speed_vec = Vector([speed_x, speed_y, 0])
         speed_vec.normalize()
@@ -71,6 +74,10 @@ class PlayerController(bge.types.KX_PythonComponent):
         if is_running:
             move_vec.normalize()
             self.model.worldOrientation = move_vec.to_track_quat("Y","Z").to_euler()
+        elif self.is_casting:
+            forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
+            forward[2] = 0
+            self.model.worldOrientation = forward.to_track_quat("Y","Z").to_euler()
 
         now = bge.logic.getClockTime()
 
@@ -119,7 +126,8 @@ class PlayerController(bge.types.KX_PythonComponent):
                         self.powerup = ""
 
         if mouse[bge.events.LEFTMOUSE]:
-            if self.powerup == POWERUP_FLAMETHROWER:
+            if self.powerup == POWERUP_FLAMETHROWER and not self.is_casting:
+                self.is_casting = True
                 self.player_animator.set_casting(True)
                 self.particle_player.play(self.flamethrower_duration, self.on_flamethrower_end)
 
@@ -131,6 +139,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.player_animator.update()
 
     def on_flamethrower_end(self):
+        self.is_casting = False
         self.player_animator.set_casting(False)
         self.powerup = ""
 
