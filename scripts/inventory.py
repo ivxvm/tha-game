@@ -10,12 +10,6 @@ class Inventory(bge.types.KX_PythonComponent):
 
     def onCollision(self, other):
         pickup = other.components.get("Pickup")
-        if pickup and pickup.active:
-            print(self, "collided with pickup", pickup.item_id)
+        if pickup and pickup.is_active:
             self.items[pickup.item_id] = self.items.get(pickup.item_id, 0) + pickup.item_amount
-            pickup.active = False
-            other.endObject()
-            print(self.items)
-
-    def update(self):
-        pass
+            pickup.trigger()
