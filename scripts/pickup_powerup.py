@@ -38,6 +38,7 @@ class PickupPowerup(bge.types.KX_PythonComponent):
             distance = (self.object.worldPosition - self.player.worldPosition).magnitude
             if distance <= self.range:
                 self.pickup()
+                self.trigger()
                 setattr(self.rotation_component, "paused", True)
                 setattr(self.wobble_component, "paused", True)
                 self.state = STATE_COOLDOWN
@@ -65,3 +66,11 @@ class PickupPowerup(bge.types.KX_PythonComponent):
         setattr(self.player_controller, "powerup", self.powerup)
         if self.powerup == POWERUP_MULTI_JUMP:
             setattr(self.player_controller, "multijumps_left", int(self.parameter))
+
+    def trigger(self):
+        for component in self.object.components:
+            if component != self:
+                try:
+                    component.trigger()
+                except AttributeError:
+                    pass
