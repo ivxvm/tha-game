@@ -26,6 +26,8 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.character = bge.constraints.getCharacter(self.object)
         self.camera_pivot = self.object.children["Player.CameraPivot"]
         self.model = self.object.children["Player.Model"]
+        self.jump_sound = self.object.actuators["JumpSound"]
+        self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
         self.player_animator = PlayerAnimator(
             armature=self.model,
             speed=1.0,
@@ -37,6 +39,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.last_platform_change_timestamp = bge.logic.getClockTime()
         self.powerup = ""
         self.multijumps_left = 0
+        self.multijumps_done = 0
         self.is_casting = False
 
     def update(self):
@@ -117,19 +120,26 @@ class PlayerController(bge.types.KX_PythonComponent):
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
                 self.character.jump()
+                self.jump_sound.pitch = 1.0
+                self.jump_sound.startSound()
             elif self.powerup == POWERUP_MULTI_JUMP:
                 if keyboard[bge.events.SPACEKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED:
-                    self.character.jump()
-                    self.player_animator.play_jumping()
                     self.multijumps_left -= 1
+                    self.multijumps_done += 1
+                    self.character.jump()
+                    self.jump_sound.pitch = 1.0 + self.multijumps_done
+                    self.jump_sound.startSound()
+                    self.player_animator.play_jumping()
                     if self.multijumps_left <= 0:
                         self.powerup = ""
+                        self.multijumps_done = 0
 
         if mouse[bge.events.LEFTMOUSE]:
             if self.powerup == POWERUP_FLAMETHROWER and not self.is_casting:
                 self.is_casting = True
                 self.player_animator.set_casting(True)
                 self.particle_player.play(self.flamethrower_duration, self.on_flamethrower_end)
+                self.flamethrower_sound.startSound()
 
         if self.powerup == POWERUP_FLAMETHROWER:
             if self.particle_player.is_playing:
