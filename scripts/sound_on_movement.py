@@ -11,7 +11,7 @@ class SoundOnMovement(bge.types.KX_PythonComponent):
 
     def start(self, args):
         self.sound = self.object.actuators["Sound"]
-        self.sound_player = self.object.components["SoundPlayer"]
+        self.sound_looper = self.object.components["SoundLooper"]
         self.stillness_frames = args["Stillness Frames"]
         self.current_stillness_frames = self.stillness_frames
         self.prev_position = Vector(self.object.worldPosition)
@@ -27,12 +27,12 @@ class SoundOnMovement(bge.types.KX_PythonComponent):
         if self.is_sound_active and is_still:
             self.current_stillness_frames += 1
             if self.current_stillness_frames >= self.stillness_frames:
-                self.sound_player.stop_sound()
+                self.sound_looper.stop_sound()
                 self.is_sound_active = False
         elif not self.is_sound_active and not is_still:
             self.current_stillness_frames -= 1
             if self.current_stillness_frames <= 0:
-                self.sound_player.start_sound()
+                self.sound_looper.start_sound()
                 self.is_sound_active = True
         # print("self.current_stillness_frames", self.current_stillness_frames)
         self.prev_position = Vector(self.object.worldPosition)
