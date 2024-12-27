@@ -16,7 +16,7 @@ class ParticlePlayer(bge.types.KX_PythonComponent):
         self.timeline = self.object.scene.objects["Timeline"].components["Timeline"]
         self.is_playing = False
         self.remaining_duration = 0
-        self.callback = lambda: None
+        self.callback = None
         deltatime.init(self)
 
     def update(self):
@@ -25,9 +25,10 @@ class ParticlePlayer(bge.types.KX_PythonComponent):
             self.remaining_duration -= delta
             if self.remaining_duration <= 0:
                 self.is_playing = False
-                self.callback()
+                if self.callback:
+                    self.callback()
 
-    def play(self, duration, callback):
+    def play(self, duration, callback = None):
         self.is_playing = True
         self.remaining_duration = duration
         self.callback = callback
