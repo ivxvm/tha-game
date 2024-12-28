@@ -40,6 +40,7 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
                     self.object.setVisible(True)
                     self.cooldown_elapsed = 0.0
         else:
+            is_item_missing = self.object.blenderObject.get("is_item_missing", False)
             distance = (self.tracked_object.worldPosition - self.object.worldPosition).length
             if distance <= self.range:
                 passes_item_check = not self.required_item or self.inventory.items.get(self.required_item, 0) >= self.required_item_count
@@ -53,5 +54,9 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
                     self.object.setVisible(False)
                     if self.mode == MODE_ONESHOT:
                         self.object.endObject()
-                else:
-                    print(self.required_item, "is needed")
+                elif not is_item_missing:
+                    self.object.blenderObject["is_item_missing"] = True
+                    self.object.blenderObject.data.update()
+            elif is_item_missing:
+                self.object.blenderObject["is_item_missing"] = False
+                self.object.blenderObject.data.update()
