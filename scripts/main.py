@@ -1,4 +1,4 @@
-import bge, bpy, constants
+import bge, bpy, constants, deltatime
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
@@ -41,8 +41,11 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.multijumps_left = 0
         self.multijumps_done = 0
         self.is_casting = False
+        deltatime.init(self)
 
     def update(self):
+        delta = deltatime.update(self)
+
         keyboard = bge.logic.keyboard.events
         mouse = bge.logic.mouse.events
 
@@ -65,7 +68,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         speed_vec.normalize()
         speed_vec *= self.move_speed
 
-        move_vec = self.camera_pivot.worldOrientation @ speed_vec
+        move_vec = self.camera_pivot.worldOrientation @ speed_vec * delta
         move_vec[2] = 0
         self.object.applyMovement(move_vec, False)
 

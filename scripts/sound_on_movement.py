@@ -6,7 +6,7 @@ class SoundOnMovement(bge.types.KX_PythonComponent):
     # Put your arguments here of the format ("key", default_value).
     # These values are exposed to the UI.
     args = OrderedDict([
-        ("Stillness Frames", 3),
+        ("Stillness Frames", 5),
     ])
 
     def start(self, args):
