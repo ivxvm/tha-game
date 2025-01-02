@@ -13,6 +13,7 @@ class WeaponTrail(bge.types.KX_PythonComponent):
         self.reinstance_interval = args["Reinstance Physics Mesh Interval"]
         self.cooldown = 0
         self.is_active = False
+        self.object.worldPosition = [0, 0, 0]
         deltatime.init(self)
 
     def update(self):
@@ -22,7 +23,12 @@ class WeaponTrail(bge.types.KX_PythonComponent):
         self.cooldown -= delta
         if self.cooldown <= 0:
             try:
-                self.object.reinstancePhysicsMesh(evaluated=True)
+                depsgraph = bpy.context.evaluated_depsgraph_get()
+                vertex_count = len(self.object.blenderObject.evaluated_get(depsgraph).data.vertices)
+                if vertex_count > 8:
+                    self.object.reinstancePhysicsMesh(evaluated=True)
+                else:
+                    print("[weapon_trail] weird vertex_count:", vertex_count)
             except Exception as e:
                 print("[weapon_trail] Error during reinstancePhysicsMesh:", e)
             self.cooldown = self.reinstance_interval
@@ -36,6 +42,7 @@ class WeaponTrail(bge.types.KX_PythonComponent):
         self.is_active = True
 
     def deactivate(self):
+        self.object.worldPosition = [0, 0, 0]
         for modifier in self.object.blenderObject.modifiers:
             modifier.show_in_editmode = False
             modifier.show_viewport = False
