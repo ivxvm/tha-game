@@ -13,18 +13,13 @@ class SoundLooper(bge.types.KX_PythonComponent):
         ("Sound Actuator Name", "Sound"),
         ("Fade In", 0.1),
         ("Fade Out", 0.1),
-        ("Min Rollout Distance", 5.0),
-        ("Max Audible Distance", 20.0),
-        ("Max Volume", 1.0),
         ("Auto Start", False),
     ])
 
     def start(self, args):
         self.player = self.object.scene.objects[args["Player"].name]
         self.sound = self.object.actuators[args["Sound Actuator Name"]]
-        self.min_rollout_distance = args["Min Rollout Distance"]
-        self.max_audible_distance = args["Max Audible Distance"]
-        self.max_volume = args.get("Max Volume", 1.0)
+        self.volume_controller = self.object.components["SoundVolumeByDistance"]
         self.fade_in = args["Fade In"]
         self.fade_out = args["Fade Out"]
         self.state = STATE_STOPPED
@@ -37,23 +32,20 @@ class SoundLooper(bge.types.KX_PythonComponent):
             self.sound.time = 0.0
 
     def update(self):
-        distance_to_player = (self.player.worldPosition - self.object.worldPosition).magnitude
-        max_volume = self.max_volume
-        if distance_to_player > self.min_rollout_distance:
-            max_volume = max(0.0, self.max_audible_distance - (distance_to_player - self.min_rollout_distance)) / self.max_audible_distance
+        volume = self.volume_controller.volume
         if self.state == STATE_FADE_IN:
             fade_duration = bge.logic.getClockTime() - self.fade_timestamp
-            self.sound.volume = max_volume * min(1.0, fade_duration / self.fade_in)
+            self.sound.volume = volume * min(1.0, fade_duration / self.fade_in)
             if fade_duration > self.fade_in:
                 self.state = STATE_PLAYING
         elif self.state == STATE_FADE_OUT:
             fade_duration = bge.logic.getClockTime() - self.fade_timestamp
-            self.sound.volume = max_volume * (1.0 - min(1.0, fade_duration / self.fade_out))
+            self.sound.volume = volume * (1.0 - min(1.0, fade_duration / self.fade_out))
             if fade_duration > self.fade_out:
                 self.sound.time = FAKE_SOUND_TIME
                 self.state = STATE_STOPPED
         elif self.state == STATE_PLAYING:
-            self.sound.volume = max_volume
+            self.sound.volume = volume
         elif self.state == STATE_STOPPED:
             self.sound.time = FAKE_SOUND_TIME
 

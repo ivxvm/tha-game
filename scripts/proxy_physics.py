@@ -10,6 +10,7 @@ class ProxyPhysics(bge.types.KX_PythonComponent):
     def start(self, args):
         self.target_object = self.object.scene.objects[args["Target Object"].name]
         self.stillness_eta = args["Stillness Eta"]
+        self.sound = self.object.actuators["Sound"]
         self.is_active = False
         self.object.gravity = [0.0, 0.0, -30.0]
         self.prev_position = self.object.worldPosition.copy()
@@ -38,3 +39,4 @@ class ProxyPhysics(bge.types.KX_PythonComponent):
     def hit(self, direction, knockback):
         if self.on_hit:
             self.on_hit(direction, knockback)
+        self.sound.startSound()
