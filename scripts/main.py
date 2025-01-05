@@ -13,6 +13,8 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Pre Falling Eta", 0.1),
         ("Platform Change Cooldown", 0.1),
         ("Flamethrower Duration", 2.0),
+        ("Flamethrower Raycast Delay", 0.5),
+        ("Flamethrower Range", 3.0),
         ("Proxy Physics", bpy.types.Object),
     ])
 
@@ -20,6 +22,8 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.move_speed = args["Move Speed"]
         self.platform_change_cooldown = args["Platform Change Cooldown"]
         self.flamethrower_duration = args["Flamethrower Duration"]
+        self.flamethrower_raycast_delay = args["Flamethrower Raycast Delay"]
+        self.flamethrower_range = args["Flamethrower Range"]
         self.proxy_physics = self.object.scene.objects[args["Proxy Physics"].name].components["ProxyPhysics"]
         self.proxy_physics.on_hit = self.handle_hit_proxy_physics
         self.particle_player = self.object.scene.objects["Player.ParticlePlayer"].components["ParticlePlayer"]
@@ -41,6 +45,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.multijumps_left = 0
         self.multijumps_done = 0
         self.is_casting = False
+        self.casting_elapsed = 0.0
         deltatime.init(self)
 
     def update(self):
@@ -81,6 +86,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             move_vec.normalize()
             self.model.worldOrientation = move_vec.to_track_quat("Y","Z").to_euler()
         elif self.is_casting:
+            self.casting_elapsed += delta
             forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
             forward[2] = 0
             self.model.worldOrientation = forward.to_track_quat("Y","Z").to_euler()
@@ -140,14 +146,20 @@ class PlayerController(bge.types.KX_PythonComponent):
         if mouse[bge.events.LEFTMOUSE]:
             if self.powerup == POWERUP_FLAMETHROWER and not self.is_casting:
                 self.is_casting = True
+                self.casting_elapsed = 0.0
                 self.player_animator.set_casting(True)
                 self.particle_player.play(self.flamethrower_duration, self.on_flamethrower_end)
                 self.flamethrower_sound.startSound()
 
         if self.powerup == POWERUP_FLAMETHROWER:
-            if self.particle_player.is_playing:
-                # raycast check hit enemy
-                pass
+            if self.particle_player.is_playing and self.casting_elapsed >= self.flamethrower_raycast_delay:
+                forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
+                forward[2] = 0
+                raycast_from = self.object.worldPosition + Vector((0, 0, 1))
+                raycast_to = raycast_from + forward.normalized() * self.flamethrower_range
+                hit_target, _, _ = self.object.rayCast(raycast_to, raycast_from, mask=0b1000)
+                if hit_target:
+                    hit_target.components["NpcEnemyAi"].burn()
 
         self.player_animator.update()
 

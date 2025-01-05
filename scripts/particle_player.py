@@ -28,9 +28,9 @@ class ParticlePlayer(bge.types.KX_PythonComponent):
                 if self.callback:
                     self.callback()
 
-    def play(self, duration, callback = None):
+    def play(self, duration, callback = None, elapsed=0.0):
         self.is_playing = True
         self.remaining_duration = duration
         self.callback = callback
-        self.particle_system.frame_start = self.timeline.current_frame
-        self.particle_system.frame_end = int(self.timeline.current_frame + duration * bge.logic.getAverageFrameRate())
+        self.particle_system.frame_start = self.timeline.current_frame - elapsed * bge.logic.getAverageFrameRate()
+        self.particle_system.frame_end = int(self.timeline.current_frame + (duration - elapsed) * bge.logic.getAverageFrameRate())
