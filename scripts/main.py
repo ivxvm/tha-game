@@ -46,6 +46,8 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.multijumps_done = 0
         self.is_casting = False
         self.casting_elapsed = 0.0
+        self.hp = 3
+        self.last_tracked_position = Vector((0, 0, 0))
         deltatime.init(self)
 
     def update(self):
@@ -128,6 +130,7 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
+                self.last_tracked_position = self.object.worldPosition.copy()
                 self.character.jump()
                 self.jump_sound.pitch = 1.0
                 self.jump_sound.startSound()
@@ -168,8 +171,10 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.player_animator.set_casting(False)
         self.powerup = ""
 
-    def handle_hit_proxy_physics(self, direction, knockback):
+    def handle_hit_proxy_physics(self, direction, knockback, damage):
         if not self.proxy_physics.is_active:
+            self.last_tracked_position = self.object.worldPosition.copy()
+            self.hp -= damage
             self.proxy_physics.activate()
             self.proxy_physics.object.setLinearVelocity(direction * knockback)
 

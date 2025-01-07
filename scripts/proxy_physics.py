@@ -36,7 +36,7 @@ class ProxyPhysics(bge.types.KX_PythonComponent):
     def deactivate(self):
         self.is_active = False
 
-    def hit(self, direction, knockback):
+    def hit(self, direction, knockback, damage):
         if self.on_hit:
-            self.on_hit(direction, knockback)
+            self.on_hit(direction, knockback, damage)
         self.sound.startSound()

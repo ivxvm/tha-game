@@ -19,20 +19,21 @@ class SoundLooper(bge.types.KX_PythonComponent):
     def start(self, args):
         self.player = self.object.scene.objects[args["Player"].name]
         self.sound = self.object.actuators[args["Sound Actuator Name"]]
-        self.volume_controller = self.object.components["SoundVolumeByDistance"]
+        self.volume_controller = self.object.components.get("SoundVolumeByDistance")
         self.fade_in = args["Fade In"]
         self.fade_out = args["Fade Out"]
         self.state = STATE_STOPPED
         self.fade_timestamp = bge.logic.getClockTime()
+        self.config_volume = self.sound.volume
+        self.sound.volume = 0.0
         self.sound.startSound()
         self.sound.time = FAKE_SOUND_TIME
-        self.sound.volume = 0.0
         if args["Auto Start"]:
             self.state = STATE_FADE_IN
             self.sound.time = 0.0
 
     def update(self):
-        volume = self.volume_controller.volume
+        volume = self.get_volume()
         if self.state == STATE_FADE_IN:
             fade_duration = bge.logic.getClockTime() - self.fade_timestamp
             self.sound.volume = volume * min(1.0, fade_duration / self.fade_in)
@@ -48,6 +49,12 @@ class SoundLooper(bge.types.KX_PythonComponent):
             self.sound.volume = volume
         elif self.state == STATE_STOPPED:
             self.sound.time = FAKE_SOUND_TIME
+
+    def get_volume(self):
+        if self.volume_controller:
+            return self.volume_controller.volume
+        else:
+            return self.config_volume
 
     def start_sound(self):
         print("start_sound")

@@ -26,6 +26,7 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
         self.required_item_count = args["RequiredItemCount"]
         self.finished = False
         self.cooldown_elapsed = 0.0
+        self.inventory = None
         if self.required_item:
             self.inventory = self.tracked_object.components["Inventory"]
         deltatime.init(self)
@@ -43,8 +44,11 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
             is_item_missing = self.object.blenderObject.get("is_item_missing", False)
             distance = (self.tracked_object.worldPosition - self.object.worldPosition).length
             if distance <= self.range:
-                passes_item_check = not self.required_item or self.inventory.items.get(self.required_item, 0) >= self.required_item_count
+                item_count = (self.inventory and self.inventory.items.get(self.required_item, 0)) or 0
+                passes_item_check = not self.required_item or item_count >= self.required_item_count
                 if passes_item_check:
+                    if self.inventory:
+                        self.inventory.items[self.required_item] = item_count - self.required_item_count
                     for component in self.trigger_target.components:
                         try:
                             component.trigger()
