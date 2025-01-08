@@ -8,9 +8,7 @@ class CameraControls(bge.types.KX_PythonComponent):
         ("Zoom Sensitivity", 1.0),
         ("Min Camera Distance", 3.0),
         ("Max Camera Distance", 20.0),
-        ("Min Camera Z", -10.0),
         ("Camera", bpy.types.Object),
-        ("Secondary Camera", bpy.types.Object),
     ])
 
     def start(self, args):
@@ -18,12 +16,9 @@ class CameraControls(bge.types.KX_PythonComponent):
         self.zoom_sensitivity = args["Zoom Sensitivity"]
         self.min_camera_distance = args["Min Camera Distance"]
         self.max_camera_distance = args["Max Camera Distance"]
-        self.min_camera_z = args["Min Camera Z"]
         self.camera = self.object.scene.objects[args["Camera"].name]
-        self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
         self.mouse = self.object.sensors["Mouse"]
         self.camera_distance = self.min_camera_distance
-        self.switch_camera(self.secondary_camera)
 
     def update(self):
         mouse_events = bge.logic.mouse.events
@@ -34,13 +29,6 @@ class CameraControls(bge.types.KX_PythonComponent):
 
         direction = (self.camera.worldPosition - self.object.worldPosition).normalized()
         self.camera.worldPosition = self.object.worldPosition + direction * self.camera_distance
-
-        if self.camera.worldPosition.z < self.min_camera_z:
-            self.secondary_camera.blenderObject.location = self.camera.worldPosition
-            self.secondary_camera.blenderObject.location.z = self.min_camera_z
-            self.switch_camera(self.secondary_camera)
-        else:
-            self.switch_camera(self.camera)
 
         screen_center_x = bge.render.getWindowWidth() // 2
         screen_center_y = bge.render.getWindowHeight() // 2
@@ -53,7 +41,3 @@ class CameraControls(bge.types.KX_PythonComponent):
         hit_target, hit_position, _ = self.object.rayCast(self.camera.worldPosition, mask=0x1)
         if hit_target:
             self.camera.worldPosition = hit_position
-
-    def switch_camera(self, camera):
-        if self.object.scene.active_camera != camera:
-            self.object.scene.active_camera = camera
