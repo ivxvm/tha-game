@@ -119,7 +119,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
 
     def process_burning(self, delta):
         self.burning_elapsed += delta
-        if self.burning_elapsed >= self.burning_duration - 1.0:
+        if self.burning_elapsed >= self.burning_duration:
             self.transition_bursting()
 
     def process_bursting(self, delta):
