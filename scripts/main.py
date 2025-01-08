@@ -164,6 +164,9 @@ class PlayerController(bge.types.KX_PythonComponent):
                 if hit_target:
                     hit_target.components["NpcEnemyAi"].burn()
 
+        if self.hp <= 0:
+            self.object.sendMessage("restart")
+
         self.player_animator.update()
 
     def on_flamethrower_end(self):

@@ -1,26 +1,38 @@
-import bge, bpy
+import bge, bpy, deltatime
 from collections import OrderedDict
+
+BLINKING_TRANSPARENCY = 0.5
 
 class VoidFalling(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("Player", bpy.types.Object),
+        ("Player Model",bpy.types.Object),
         ("Camera", bpy.types.Object),
         ("Secondary Camera", bpy.types.Object),
         ("Respawn Anchors", bpy.types.Collection),
         ("Min Z", -100.0),
         ("Min Camera Z", -10.0),
+        ("Blinking After Respawn Duration", 2.0),
+        ("Blinking After Respawn Period", 0.25),
     ])
 
     def start(self, args):
         self.player = self.object.scene.objects[args["Player"].name]
+        self.player_model = self.object.scene.objects[args["Player Model"].name]
         self.player_controller = self.player.components["PlayerController"]
         self.camera = self.object.scene.objects[args["Camera"].name]
         self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
         self.respawn_anchors = [self.object.scene.objects[object.name] for object in args["Respawn Anchors"].objects]
         self.min_z = args["Min Z"]
         self.min_camera_z = args["Min Camera Z"]
+        self.blinking_after_respawn_duration = args["Blinking After Respawn Duration"]
+        self.blinking_after_respawn_period = args["Blinking After Respawn Period"]
+        self.blinking_remaining = 0.0
+        deltatime.init(self)
 
     def update(self):
+        delta = deltatime.update(self)
+
         if self.camera.worldPosition.z < self.min_camera_z:
             self.secondary_camera.blenderObject.location = self.camera.worldPosition
             self.secondary_camera.blenderObject.location.z = self.min_camera_z
@@ -30,7 +42,6 @@ class VoidFalling(bge.types.KX_PythonComponent):
 
         if self.player.worldPosition.z < self.min_z:
             last_tracked_position = self.player_controller.last_tracked_position
-            self.player_controller.hp -= 1
             best_anchor = None
             best_anchor_distance = 999999.0
             for respawn_anchor in self.respawn_anchors:
@@ -38,7 +49,18 @@ class VoidFalling(bge.types.KX_PythonComponent):
                 if magnitude < best_anchor_distance:
                     best_anchor = respawn_anchor
                     best_anchor_distance = magnitude
+            self.player_controller.proxy_physics.deactivate()
             self.player.worldPosition = best_anchor.worldPosition.copy()
+            self.blinking_remaining = self.blinking_after_respawn_duration
+            self.player_controller.hp -= 1
+
+        if self.blinking_remaining > 0:
+            time = self.blinking_after_respawn_duration - self.blinking_remaining
+            if (time // self.blinking_after_respawn_period) % 2 == 0:
+                self.player_model.blenderObject["transparency"] = BLINKING_TRANSPARENCY
+            else:
+                self.player_model.blenderObject["transparency"] = 0.0
+            self.blinking_remaining -= delta
 
     def switch_camera(self, camera):
         if self.object.scene.active_camera != camera:
