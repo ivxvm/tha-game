@@ -17,6 +17,7 @@ def get_animation_definition(object):
 class NpcEnemyAi(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("Max Idle Time", 5.0),
+        ("Stalk Check Debounce Interval", 0.25),
         ("Melee Range", 2.0),
         ("Burning Duration", 1.0),
         ("Burst Duration", 0.25),
@@ -34,6 +35,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
 
     def start(self, args):
         self.max_idle_time = args["Max Idle Time"]
+        self.stalk_check_debounce_interval = args["Stalk Check Debounce Interval"]
         self.melee_range = args["Melee Range"]
         self.burning_duration = args["Burning Duration"]
         self.burst_duration = args["Burst Duration"]
@@ -59,6 +61,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.speed = 1.0
         self.burning_elapsed = 0.0
         self.bursting_elapsed = 0.0
+        self.last_stalk_check_timestamp = bge.logic.getClockTime()
         deltatime.init(self)
 
     def update(self):
@@ -68,10 +71,10 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.transition_idle()
         elif self.state == STATE_IDLE:
             self.process_idle(delta)
-            self.stalk_player_if_visible()
+            self.stalk_player_if_visible_and_reachable()
         elif self.state == STATE_PATROLLING:
             self.process_patrolling(delta)
-            self.stalk_player_if_visible()
+            self.stalk_player_if_visible_and_reachable()
         elif self.state == STATE_STALKING:
             self.process_stalking(delta)
         elif self.state == STATE_ATTACKING:
@@ -101,7 +104,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.movement.target_position = self.nav.get_next_path_position()
             if self.movement.is_still:
                 self.animation_player.play(self.idle_animation.name)
-                self.movement.rotate_towards(self.player)
+                self.movement.rotate_towards(self.player.worldPosition)
                 if not self.is_target_visible(self.player):
                     self.transition_idle()
             else:
@@ -178,9 +181,19 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.burst_particle_player.play(self.burst_duration)
         self.state = STATE_BURSTING
 
-    def stalk_player_if_visible(self):
-        if self.is_target_visible(self.player):
-            self.transition_stalking(self.player)
+    def stalk_player_if_visible_and_reachable(self):
+        now = bge.logic.getClockTime()
+        delta = now - self.last_stalk_check_timestamp
+        if delta >= self.stalk_check_debounce_interval:
+            if self.is_target_visible(self.player):
+                self.movement.rotate_towards(self.player.worldPosition)
+                self.nav.update_target_position(self.player.worldPosition)
+                if self.nav.is_target_reachable():
+                    print("[npc_enemy_ai] player reachable")
+                    self.transition_stalking(self.player)
+                else:
+                    print("[npc_enemy_ai] player unreachable")
+            self.last_stalk_check_timestamp = now
 
     def is_target_visible(self, target):
         hit_target, _, _ = self.object.rayCast(target)

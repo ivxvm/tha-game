@@ -31,8 +31,8 @@ class NpcMovement(bge.types.KX_PythonComponent):
             else:
                 self.is_still = True
 
-    def rotate_towards(self, target):
-        direction = (target.worldPosition - self.object.worldPosition).normalized()
+    def rotate_towards(self, target_position):
+        direction = (target_position - self.object.worldPosition).normalized()
         direction.z = 0
         self.object.alignAxisToVect(direction, 1)
         self.object.alignAxisToVect(AXIS_Z)

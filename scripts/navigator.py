@@ -32,7 +32,7 @@ class Navigator(bge.types.KX_PythonComponent):
         return distance_xy(self.object.worldPosition, self.target_position) <= self.distance_eta
 
     def is_target_reachable(self):
-        return len(self.path) > 0
+        return len(self.path) > 0 and distance_xy(self.path[-1], self.target_position) < self.distance_eta
 
     def update_target_position(self, value):
         if self.debounce_cooldown > 0:
