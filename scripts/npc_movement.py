@@ -1,4 +1,4 @@
-import bge
+import bge, deltatime
 from collections import OrderedDict
 from mathutils import Vector
 
@@ -6,25 +6,25 @@ AXIS_Z = Vector([0, 0, 1])
 
 class NpcMovement(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("Walk Speed", 2.0),
-        ("Rotation Speed", 0.1),
+        ("Movement Speed", 15.0),
         ("Stillness Eta", 0.1),
     ])
 
     def start(self, args):
-        self.walk_speed = args["Walk Speed"]
-        self.rotation_speed = args["Rotation Speed"]
+        self.movement_speed = args["Movement Speed"]
         self.stillness_eta = args["Stillness Eta"]
         self.target_position = Vector([0, 0, 0])
         self.is_still = False
         self.is_active = False
+        deltatime.init(self)
 
     def update(self):
+        delta = deltatime.update(self)
         if self.is_active:
             direction = (self.target_position - self.object.worldPosition).normalized()
             direction.z = 0
             if direction.magnitude > self.stillness_eta:
-                self.object.applyMovement(direction * self.walk_speed, False)
+                self.object.applyMovement(direction * self.movement_speed * delta, False)
                 self.object.alignAxisToVect(direction, 1)
                 self.object.alignAxisToVect(AXIS_Z)
                 self.is_still = False

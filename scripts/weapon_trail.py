@@ -80,6 +80,7 @@ class WeaponTrail(bge.types.KX_PythonComponent):
 
     def activate(self):
         print("[weapon_trail] activating")
+        self.object.restorePhysics()
         self.object.worldPosition = self.owner.worldPosition
         bmesh.ops.delete(self.trail_bm, geom=self.trail_bm.verts)
         self.trail_bm.to_mesh(self.object.blenderObject.data)
@@ -89,6 +90,7 @@ class WeaponTrail(bge.types.KX_PythonComponent):
 
     def deactivate(self):
         print("[weapon_trail] deactivating")
+        self.object.suspendPhysics()
         bmesh.ops.delete(self.trail_bm, geom=self.trail_bm.verts)
         self.trail_bm.to_mesh(self.object.blenderObject.data)
         self.trail_bm.verts.ensure_lookup_table()

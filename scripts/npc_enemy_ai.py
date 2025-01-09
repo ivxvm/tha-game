@@ -64,6 +64,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
     def update(self):
         delta = deltatime.update(self)
         if self.state == STATE_INIT:
+            self.original_movement_speed = self.movement.movement_speed
             self.transition_idle()
         elif self.state == STATE_IDLE:
             self.process_idle(delta)
@@ -108,13 +109,20 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
 
     def process_attacking(self, delta):
         if self.animation_player.is_playing(self.attack_animation.name):
-            if not self.weapon_trail.is_active and self.animation_player.get_playback_progress() > 0.25:
-                self.weapon_trail.activate()
-            return
-        if self.is_attack_available(self.player):
+            progress = self.animation_player.get_playback_progress()
+            if progress > 0:
+                if not self.weapon_trail.is_active:
+                    self.weapon_trail.activate()
+                if progress > 0.75:
+                    self.set_speed_modifier(0.5)
+                else:
+                    self.set_speed_modifier(0.75)
+            self.movement.target_position = self.player.worldPosition
+        elif self.is_attack_available(self.player):
             self.animation_player.play(self.attack_animation.name)
         else:
             self.weapon_trail.deactivate()
+            self.set_speed_modifier(1.0)
             self.transition_stalking(self.player)
 
     def process_burning(self, delta):
@@ -153,7 +161,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
 
     def transition_attacking(self, target):
         print("[npc_enemy_ai] transition_attacking")
-        self.movement.deactivate()
+        self.set_speed_modifier(0.75)
         self.animation_player.play(self.attack_animation.name)
         self.state = STATE_ATTACKING
 
@@ -187,3 +195,6 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
     def burn(self):
         if self.state != STATE_BURNING and self.state != STATE_BURSTING:
             self.transition_burning()
+
+    def set_speed_modifier(self, speed_modifier):
+        self.movement.movement_speed = self.original_movement_speed * speed_modifier
