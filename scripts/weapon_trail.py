@@ -75,7 +75,7 @@ class WeaponTrail(bge.types.KX_PythonComponent):
 
         if self.cooldown <= 0:
             if len(self.face_groups) > 0:
-                self.object.reinstancePhysicsMesh(evaluated=True)
+                self.object.reinstancePhysicsMesh()
             self.cooldown = self.reinstance_interval
 
     def activate(self):

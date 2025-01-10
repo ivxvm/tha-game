@@ -54,6 +54,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.weapon_trail = self.weapon_trail_model.components["WeaponTrail"]
         self.npc_model = self.object.scene.objects[args["Npc Model"].name]
         self.player = self.object.scene.objects[args["Player"].name]
+        self.player_controller = self.player.components["PlayerController"]
         self.state = STATE_INIT
         self.idle_time = 0.0
         self.patrolling_waypoints = []
@@ -97,7 +98,9 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.movement.target_position = next_path_position
 
     def process_stalking(self, delta):
-        if self.is_attack_available(self.player):
+        if self.player_controller.hp <= 0:
+            self.transition_idle()
+        elif self.is_melee_reachable(self.player):
             self.transition_attacking(self.player)
         else:
             self.nav.update_target_position(self.player.worldPosition)
@@ -121,7 +124,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
                 else:
                     self.set_speed_modifier(0.75)
             self.movement.target_position = self.player.worldPosition
-        elif self.is_attack_available(self.player):
+        elif self.is_melee_reachable(self.player) and self.player_controller.hp > 0:
             self.animation_player.play(self.attack_animation.name)
         else:
             self.weapon_trail.deactivate()
@@ -199,7 +202,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         hit_target, _, _ = self.object.rayCast(target)
         return hit_target == target
 
-    def is_attack_available(self, target):
+    def is_melee_reachable(self, target):
         if target:
             return (self.object.worldPosition - target.worldPosition).magnitude < self.melee_range
         else:

@@ -1,4 +1,4 @@
-import bge, bpy, constants, deltatime
+import bge, bpy, math, constants, deltatime
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
@@ -12,6 +12,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Move Speed", 0.1),
         ("Pre Falling Eta", 0.1),
         ("Platform Change Cooldown", 0.1),
+        ("Restart Delay", 3.0),
         ("Flamethrower Duration", 2.0),
         ("Flamethrower Raycast Delay", 0.5),
         ("Flamethrower Range", 3.0),
@@ -21,6 +22,7 @@ class PlayerController(bge.types.KX_PythonComponent):
     def start(self, args):
         self.move_speed = args["Move Speed"]
         self.platform_change_cooldown = args["Platform Change Cooldown"]
+        self.restart_delay = args["Restart Delay"]
         self.flamethrower_duration = args["Flamethrower Duration"]
         self.flamethrower_raycast_delay = args["Flamethrower Raycast Delay"]
         self.flamethrower_range = args["Flamethrower Range"]
@@ -47,11 +49,27 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.is_casting = False
         self.casting_elapsed = 0.0
         self.hp = 3
+        self.is_dying = False
         self.last_tracked_position = Vector((0, 0, 0))
         deltatime.init(self)
 
     def update(self):
         delta = deltatime.update(self)
+        now = bge.logic.getClockTime()
+
+        if self.is_dying:
+            delta = now - self.death_timestamp
+            if delta >= self.restart_delay:
+                self.object.sendMessage("restart")
+            if not self.player_animator.armature.isPlayingAction():
+                self.player_animator.play_dead()
+            return
+        elif self.hp <= 0:
+            self.is_dying = True
+            self.death_timestamp = bge.logic.getClockTime()
+            self.player_animator.armature.stopAction()
+            self.player_animator.play_dying()
+            return
 
         keyboard = bge.logic.keyboard.events
         mouse = bge.logic.mouse.events
@@ -64,12 +82,10 @@ class PlayerController(bge.types.KX_PythonComponent):
                 speed_x -= 1
             if keyboard[bge.events.DKEY]:
                 speed_x += 1
-
             if keyboard[bge.events.WKEY]:
                 speed_y += 1
             if keyboard[bge.events.SKEY]:
                 speed_y -= 1
-
 
         speed_vec = Vector([speed_x, speed_y, 0])
         speed_vec.normalize()
@@ -92,8 +108,6 @@ class PlayerController(bge.types.KX_PythonComponent):
             forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
             forward[2] = 0
             self.model.worldOrientation = forward.to_track_quat("Y","Z").to_euler()
-
-        now = bge.logic.getClockTime()
 
         if now - self.last_platform_change_timestamp > self.platform_change_cooldown:
             platform_changed = False
@@ -164,11 +178,6 @@ class PlayerController(bge.types.KX_PythonComponent):
                 if hit_target:
                     hit_target.components["NpcEnemyAi"].burn()
 
-        if self.hp <= 0:
-            self.object.sendMessage("restart")
-
-        self.player_animator.update()
-
     def on_flamethrower_end(self):
         self.is_casting = False
         self.player_animator.set_casting(False)
@@ -180,6 +189,11 @@ class PlayerController(bge.types.KX_PythonComponent):
             self.hp -= damage
             self.proxy_physics.activate()
             self.proxy_physics.object.setLinearVelocity(direction * knockback)
+            direction[2] = 0
+            self.model.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
+            if self.hp <= 0:
+                self.proxy_physics.object.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
+                self.proxy_physics.object.applyRotation([math.pi / 2, 0, 0], True)
 
 class PlayerAnimator():
     def __init__(self, armature, speed, pre_falling_eta):
@@ -236,9 +250,6 @@ class PlayerAnimator():
             self.play_idle()
             self.state = "IDLE"
 
-    def update(self):
-        pass
-
     def play_idle(self):
         self.armature.playAction("Idle", 0, 16, 0, 0, 0, 1, 0, 0, self.speed * 0.5)
 
@@ -253,3 +264,9 @@ class PlayerAnimator():
 
     def play_casting(self):
         self.armature.playAction("Casting", 0, 16, 0, 0, 0, 1, 0, 0, self.speed)
+
+    def play_dying(self):
+        self.armature.playAction("Dying", 0, 8, 0, 0, 0, 0, 0, 0, self.speed)
+
+    def play_dead(self):
+        self.armature.playAction("Dead", 0, 1, 0, 0, 0, 1, 0, 0, self.speed)
