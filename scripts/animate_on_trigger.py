@@ -1,4 +1,4 @@
-import bge, deltatime
+import bge, bpy, deltatime
 from mathutils import Vector
 from collections import OrderedDict
 
@@ -60,3 +60,4 @@ class AnimateOnTrigger(bge.types.KX_PythonComponent):
 
     def trigger(self):
         self.active = True
+        self.update()

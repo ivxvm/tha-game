@@ -74,7 +74,7 @@ class WeaponTrail(bge.types.KX_PythonComponent):
             self.last_vertex_row = new_vertex_row
 
         if self.cooldown <= 0:
-            if len(self.face_groups) > 0:
+            if len(self.face_groups) > 1:
                 self.object.reinstancePhysicsMesh()
             self.cooldown = self.reinstance_interval
 

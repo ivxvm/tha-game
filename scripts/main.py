@@ -1,4 +1,4 @@
-import bge, bpy, math, constants, deltatime
+import bge, bpy, math, constants, utils, deltatime
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
@@ -17,6 +17,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Flamethrower Raycast Delay", 0.5),
         ("Flamethrower Range", 3.0),
         ("Proxy Physics", bpy.types.Object),
+        ("Game Over Text", bpy.types.Object),
     ])
 
     def start(self, args):
@@ -34,6 +35,8 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.model = self.object.children["Player.Model"]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
+        self.game_over_text = self.object.scene.objects[args["Game Over Text"].name]
+        self.game_over_text.visible = False
         self.player_animator = PlayerAnimator(
             armature=self.model,
             speed=1.0,
@@ -77,6 +80,8 @@ class PlayerController(bge.types.KX_PythonComponent):
             self.death_timestamp = bge.logic.getClockTime()
             self.player_animator.armature.stopAction()
             self.player_animator.play_dying()
+            utils.trigger_all_components(self.game_over_text)
+            self.game_over_text.visible = True
             return True
 
         return False
