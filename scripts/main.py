@@ -55,6 +55,14 @@ class PlayerController(bge.types.KX_PythonComponent):
 
     def update(self):
         delta = deltatime.update(self)
+        is_dying = self.update_dying_status()
+        if not is_dying:
+            self.update_movement(delta)
+            self.update_platform()
+            self.update_jumping()
+            self.update_casting(delta)
+
+    def update_dying_status(self):
         now = bge.logic.getClockTime()
 
         if self.is_dying:
@@ -63,16 +71,18 @@ class PlayerController(bge.types.KX_PythonComponent):
                 self.object.sendMessage("restart")
             if not self.player_animator.armature.isPlayingAction():
                 self.player_animator.play_dead()
-            return
+            return True
         elif self.hp <= 0:
             self.is_dying = True
             self.death_timestamp = bge.logic.getClockTime()
             self.player_animator.armature.stopAction()
             self.player_animator.play_dying()
-            return
+            return True
 
+        return False
+
+    def update_movement(self, delta):
         keyboard = bge.logic.keyboard.events
-        mouse = bge.logic.mouse.events
 
         speed_x = 0
         speed_y = 0
@@ -103,11 +113,9 @@ class PlayerController(bge.types.KX_PythonComponent):
         if is_running:
             move_vec.normalize()
             self.model.worldOrientation = move_vec.to_track_quat("Y","Z").to_euler()
-        elif self.is_casting:
-            self.casting_elapsed += delta
-            forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
-            forward[2] = 0
-            self.model.worldOrientation = forward.to_track_quat("Y","Z").to_euler()
+
+    def update_platform(self):
+        now = bge.logic.getClockTime()
 
         if now - self.last_platform_change_timestamp > self.platform_change_cooldown:
             platform_changed = False
@@ -142,6 +150,9 @@ class PlayerController(bge.types.KX_PythonComponent):
                 self.object.applyRotation(Vector([0, 0, delta_rotation_z]), False)
                 self.prev_platform_orientation = current_platform_orientation.copy()
 
+    def update_jumping(self):
+        keyboard = bge.logic.keyboard.events
+
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
                 self.last_tracked_position = self.object.worldPosition.copy()
@@ -160,16 +171,24 @@ class PlayerController(bge.types.KX_PythonComponent):
                         self.powerup = ""
                         self.multijumps_done = 0
 
+    def update_casting(self, delta):
+        mouse = bge.logic.mouse.events
+
         if mouse[bge.events.LEFTMOUSE]:
             if self.powerup == POWERUP_FLAMETHROWER and not self.is_casting:
                 self.is_casting = True
                 self.casting_elapsed = 0.0
                 self.player_animator.set_casting(True)
-                self.particle_player.play(self.flamethrower_duration, self.on_flamethrower_end)
+                self.particle_player.play(self.flamethrower_duration, self.handle_flamethrower_end)
                 self.flamethrower_sound.startSound()
 
-        if self.powerup == POWERUP_FLAMETHROWER:
-            if self.particle_player.is_playing and self.casting_elapsed >= self.flamethrower_raycast_delay:
+        if self.is_casting:
+            self.casting_elapsed += delta
+            forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
+            forward[2] = 0
+            self.model.worldOrientation = forward.to_track_quat("Y","Z").to_euler()
+
+            if self.powerup == POWERUP_FLAMETHROWER and self.casting_elapsed >= self.flamethrower_raycast_delay:
                 forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
                 forward[2] = 0
                 raycast_from = self.object.worldPosition + Vector((0, 0, 1))
@@ -178,7 +197,8 @@ class PlayerController(bge.types.KX_PythonComponent):
                 if hit_target:
                     hit_target.components["NpcEnemyAi"].burn()
 
-    def on_flamethrower_end(self):
+
+    def handle_flamethrower_end(self):
         self.is_casting = False
         self.player_animator.set_casting(False)
         self.powerup = ""
