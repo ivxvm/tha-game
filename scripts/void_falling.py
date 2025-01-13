@@ -28,6 +28,9 @@ class VoidFalling(bge.types.KX_PythonComponent):
         self.blinking_after_respawn_duration = args["Blinking After Respawn Duration"]
         self.blinking_after_respawn_period = args["Blinking After Respawn Period"]
         self.blinking_remaining = 0.0
+        self.is_fall_sound_triggered = False
+        self.fall_sound = self.object.actuators["FallSound"]
+        self.respawn_sound = self.object.actuators["RespawnSound"]
         deltatime.init(self)
 
     def update(self):
@@ -37,22 +40,28 @@ class VoidFalling(bge.types.KX_PythonComponent):
             self.secondary_camera.blenderObject.location = self.camera.worldPosition
             self.secondary_camera.blenderObject.location.z = self.min_camera_z
             self.switch_camera(self.secondary_camera)
+            if not self.is_fall_sound_triggered:
+                self.fall_sound.startSound()
+                self.is_fall_sound_triggered = True
         else:
             self.switch_camera(self.camera)
 
         if self.player.worldPosition.z < self.min_z:
-            last_tracked_position = self.player_controller.last_tracked_position
-            best_anchor = None
-            best_anchor_distance = 999999.0
-            for respawn_anchor in self.respawn_anchors:
-                magnitude = (last_tracked_position - respawn_anchor.worldPosition).magnitude
-                if magnitude < best_anchor_distance:
-                    best_anchor = respawn_anchor
-                    best_anchor_distance = magnitude
-            self.player_controller.proxy_physics.deactivate()
-            self.player.worldPosition = best_anchor.worldPosition.copy()
-            self.blinking_remaining = self.blinking_after_respawn_duration
             self.player_controller.hp -= 1
+            if self.player_controller.hp > 0:
+                last_tracked_position = self.player_controller.last_tracked_position
+                best_anchor = None
+                best_anchor_distance = 999999.0
+                for respawn_anchor in self.respawn_anchors:
+                    magnitude = (last_tracked_position - respawn_anchor.worldPosition).magnitude
+                    if magnitude < best_anchor_distance:
+                        best_anchor = respawn_anchor
+                        best_anchor_distance = magnitude
+                self.player_controller.proxy_physics.deactivate()
+                self.player.worldPosition = best_anchor.worldPosition.copy()
+                self.respawn_sound.startSound()
+                self.blinking_remaining = self.blinking_after_respawn_duration
+                self.is_fall_sound_triggered = False
 
         if self.blinking_remaining > 0:
             time = self.blinking_after_respawn_duration - self.blinking_remaining

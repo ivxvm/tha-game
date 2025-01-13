@@ -35,6 +35,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.model = self.object.children["Player.Model"]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
+        self.respawn_sound = self.object.actuators["RespawnSound"]
         self.game_over_text = self.object.scene.objects[args["Game Over Text"].name]
         self.game_over_text.visible = False
         self.player_animator = PlayerAnimator(
@@ -54,6 +55,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.hp = 3
         self.is_dying = False
         self.last_tracked_position = Vector((0, 0, 0))
+        self.respawn_sound.startSound()
         deltatime.init(self)
 
     def update(self):
