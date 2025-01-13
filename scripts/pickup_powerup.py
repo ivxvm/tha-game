@@ -49,7 +49,7 @@ class PickupPowerup(bge.types.KX_PythonComponent):
             new_scale = ICON_SCALE_OFFSET + progress * ICON_SCALE_MULTIPLIER
             self.wobble_component.object.blenderObject.scale = (new_scale, new_scale, new_scale)
             for child in self.object.children:
-                child.blenderObject["desaturate"] = 1.0 - progress
+                child.blenderObject["transparency"] = 1.0 - progress
                 child.blenderObject.data.update()
             if progress >= 1.0:
                 setattr(self.rotation_component, "paused", False)
