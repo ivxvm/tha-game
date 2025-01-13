@@ -55,6 +55,9 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.npc_model = self.object.scene.objects[args["Npc Model"].name]
         self.player = self.object.scene.objects[args["Player"].name]
         self.player_controller = self.player.components["PlayerController"]
+        self.burning_scream_sound = self.object.actuators["BurningScreamSound"]
+        self.burning_fire_sound = self.object.actuators["BurningFireSound"]
+        self.bursting_sound = self.object.actuators["BurstingSound"]
         self.state = STATE_INIT
         self.idle_time = 0.0
         self.patrolling_waypoints = []
@@ -175,6 +178,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.movement.deactivate()
         self.animation_player.play(self.burning_animation.name)
         self.burning_particle_player.play(self.burning_duration)
+        self.burning_scream_sound.startSound()
+        self.burning_fire_sound.startSound()
         self.state = STATE_BURNING
 
     def transition_bursting(self):
@@ -182,6 +187,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.weapon_model.visible = False
         self.weapon_trail_model.visible = False
         self.burst_particle_player.play(self.burst_duration)
+        self.bursting_sound.startSound()
         self.state = STATE_BURSTING
 
     def stalk_player_if_visible_and_reachable(self):
