@@ -36,6 +36,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
         self.respawn_sound = self.object.actuators["RespawnSound"]
+        self.death_sound = self.object.actuators["DeathSound"]
         self.game_over_text = self.object.scene.objects[args["Game Over Text"].name]
         self.game_over_text.visible = False
         self.player_animator = PlayerAnimator(
@@ -221,6 +222,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             if self.hp <= 0:
                 self.proxy_physics.object.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
                 self.proxy_physics.object.applyRotation([math.pi / 2, 0, 0], True)
+                self.death_sound.startSound()
 
 class PlayerAnimator():
     def __init__(self, armature, speed, pre_falling_eta):
