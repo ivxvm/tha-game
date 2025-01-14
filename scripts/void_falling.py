@@ -1,4 +1,4 @@
-import bge, bpy, deltatime
+import bge, bpy, constants, deltatime
 from collections import OrderedDict
 
 BLINKING_TRANSPARENCY = 0.5
@@ -8,6 +8,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
         ("Player", bpy.types.Object),
         ("Player Model",bpy.types.Object),
         ("Camera", bpy.types.Object),
+        ("Camera Pivot", bpy.types.Object),
         ("Secondary Camera", bpy.types.Object),
         ("Respawn Anchors", bpy.types.Collection),
         ("Min Z", -100.0),
@@ -21,6 +22,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
         self.player_model = self.object.scene.objects[args["Player Model"].name]
         self.player_controller = self.player.components["PlayerController"]
         self.camera = self.object.scene.objects[args["Camera"].name]
+        self.camera_pivot = self.object.scene.objects[args["Camera Pivot"].name]
         self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
         self.respawn_anchors = [self.object.scene.objects[object.name] for object in args["Respawn Anchors"].objects]
         self.min_z = args["Min Z"]
@@ -59,6 +61,8 @@ class VoidFalling(bge.types.KX_PythonComponent):
                         best_anchor_distance = magnitude
                 self.player_controller.proxy_physics.deactivate()
                 self.player.worldPosition = best_anchor.worldPosition.copy()
+                self.camera_pivot.alignAxisToVect(best_anchor.getAxisVect(constants.AXIS_Y), 1)
+                self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
                 self.respawn_sound.startSound()
                 self.blinking_remaining = self.blinking_after_respawn_duration
                 self.is_fall_sound_triggered = False

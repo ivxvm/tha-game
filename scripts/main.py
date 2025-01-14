@@ -137,6 +137,7 @@ class PlayerController(bge.types.KX_PythonComponent):
                     self.prev_platform_orientation = self.platform.worldOrientation.copy()
             else:
                 if self.platform:
+                    self.last_tracked_position = self.object.worldPosition.copy()
                     self.platform = None
                     platform_changed = True
             if platform_changed:
@@ -163,7 +164,6 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
-                self.last_tracked_position = self.object.worldPosition.copy()
                 self.character.jump()
                 self.jump_sound.pitch = 1.0
                 self.jump_sound.startSound()
