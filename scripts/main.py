@@ -56,8 +56,11 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.hp = 3
         self.is_dying = False
         self.last_tracked_position = Vector((0, 0, 0))
-        self.respawn_sound.startSound()
         deltatime.init(self)
+        if bge.logic.globalDict.get("is_first_start", True):
+            bge.logic.globalDict["is_first_start"] = False
+        else:
+            self.respawn_sound.startSound()
 
     def update(self):
         delta = deltatime.update(self)
@@ -214,15 +217,19 @@ class PlayerController(bge.types.KX_PythonComponent):
     def handle_hit_proxy_physics(self, direction, knockback, damage):
         if not self.proxy_physics.is_active:
             self.last_tracked_position = self.object.worldPosition.copy()
+            was_already_dead = self.hp <= 0
             self.hp -= damage
             self.proxy_physics.activate()
             self.proxy_physics.object.setLinearVelocity(direction * knockback)
             direction[2] = 0
-            self.model.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
+            if knockback > 0:
+                self.model.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
             if self.hp <= 0:
-                self.proxy_physics.object.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
-                self.proxy_physics.object.applyRotation([math.pi / 2, 0, 0], True)
-                self.death_sound.startSound()
+                if knockback > 0:
+                    self.proxy_physics.object.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
+                    self.proxy_physics.object.applyRotation([math.pi / 2, 0, 0], True)
+                if not was_already_dead:
+                    self.death_sound.startSound()
 
 class PlayerAnimator():
     def __init__(self, armature, speed, pre_falling_eta):

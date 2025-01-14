@@ -20,6 +20,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
     def start(self, args):
         self.player = self.object.scene.objects[args["Player"].name]
         self.player_model = self.object.scene.objects[args["Player Model"].name]
+        self.player_model_material = self.player_model.blenderObject.data.materials[0]
         self.player_controller = self.player.components["PlayerController"]
         self.camera = self.object.scene.objects[args["Camera"].name]
         self.camera_pivot = self.object.scene.objects[args["Camera Pivot"].name]
@@ -65,6 +66,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
                 self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
                 self.respawn_sound.startSound()
                 self.blinking_remaining = self.blinking_after_respawn_duration
+                self.player_model_material.blend_method = "BLEND"
                 self.is_fall_sound_triggered = False
 
         if self.blinking_remaining > 0:
@@ -74,6 +76,8 @@ class VoidFalling(bge.types.KX_PythonComponent):
             else:
                 self.player_model.blenderObject["transparency"] = 0.0
             self.blinking_remaining -= delta
+        elif self.player_model_material.blend_method == "BLEND":
+            self.player_model_material.blend_method = "OPAQUE"
 
     def switch_camera(self, camera):
         if self.object.scene.active_camera != camera:
