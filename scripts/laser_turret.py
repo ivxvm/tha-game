@@ -18,6 +18,7 @@ class LaserTurret(bge.types.KX_PythonComponent):
         self.delay_time = args["Delay Time"]
         self.laser_rays = [self.object.scene.objects[args["Laser Ray 1"].name],
                            self.object.scene.objects[args["Laser Ray 2"].name]]
+        self.laser_sound = self.object.actuators["LaserSound"]
         self.state = STATE_DELAY
         self.cooldown = self.delay_time + args["Predelay"]
         self.active_ray_index = 0
@@ -42,5 +43,6 @@ class LaserTurret(bge.types.KX_PythonComponent):
                 ray = self.laser_rays[self.active_ray_index]
                 ray.restorePhysics()
                 ray.visible = True
+                self.laser_sound.startSound()
                 self.state = STATE_ACTIVE
                 self.cooldown = self.active_time
