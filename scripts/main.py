@@ -2,6 +2,7 @@ import bge, bpy, math, constants, utils, deltatime
 from collections import OrderedDict
 from mathutils import Vector, Matrix
 
+PLATFORM_RAYCAST_MASK = 1 | 2
 POWERUP_MULTI_JUMP = "Multi Jump"
 POWERUP_FLAMETHROWER = "Flamethrower"
 
@@ -132,7 +133,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             platform_changed = False
             if self.character.onGround:
                 position = self.object.worldPosition
-                hit_target, _, _ = self.object.rayCast(position + self.platform_raycast_vec, mask=0x1)
+                hit_target, _, _ = self.object.rayCast(position + self.platform_raycast_vec, mask=PLATFORM_RAYCAST_MASK)
                 if hit_target and self.platform != hit_target:
                     self.platform = hit_target
                     platform_changed = True
