@@ -52,6 +52,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.powerup = ""
         self.multijumps_left = 0
         self.multijumps_done = 0
+        self.is_jumping = False
         self.is_casting = False
         self.casting_elapsed = 0.0
         self.hp = 3
@@ -132,6 +133,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         if now - self.last_platform_change_timestamp > self.platform_change_cooldown:
             platform_changed = False
             if self.character.onGround:
+                self.is_jumping = False
                 position = self.object.worldPosition
                 hit_target, _, _ = self.object.rayCast(position + self.platform_raycast_vec, mask=PLATFORM_RAYCAST_MASK)
                 if hit_target and self.platform != hit_target:
@@ -169,13 +171,16 @@ class PlayerController(bge.types.KX_PythonComponent):
         if keyboard[bge.events.SPACEKEY]:
             if self.platform:
                 self.character.jump()
+                self.is_jumping = True
                 self.jump_sound.pitch = 1.0
                 self.jump_sound.startSound()
             elif self.powerup == POWERUP_MULTI_JUMP:
                 if keyboard[bge.events.SPACEKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED:
-                    self.multijumps_left -= 1
-                    self.multijumps_done += 1
+                    if self.is_jumping:
+                        self.multijumps_left -= 1
+                        self.multijumps_done += 1
                     self.character.jump()
+                    self.is_jumping = True
                     self.jump_sound.pitch = 1.0 + self.multijumps_done
                     self.jump_sound.startSound()
                     self.player_animator.play_jumping()
