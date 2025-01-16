@@ -1,13 +1,13 @@
-import bge, constants
+import bge, bpy, constants
 from collections import OrderedDict
 
 class Billboard(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("Track To", "")
+        ("Track To", bpy.types.Object),
     ])
 
     def start(self, args):
-        self.track_to = self.object.scene.objects[args["Track To"]]
+        self.track_to = self.object.scene.objects[args["Track To"].name]
 
     def update(self):
         self.object.alignAxisToVect(self.track_to.getAxisVect(constants.AXIS_X), 0)
