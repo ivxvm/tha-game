@@ -46,8 +46,6 @@ class VoidFalling(bge.types.KX_PythonComponent):
             if not self.is_fall_sound_triggered:
                 self.fall_sound.startSound()
                 self.is_fall_sound_triggered = True
-        else:
-            self.switch_camera(self.camera)
 
         if self.player.worldPosition.z < self.min_z:
             self.player_controller.hp -= 1
@@ -65,6 +63,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
                 self.camera_pivot.alignAxisToVect(best_anchor.getAxisVect(constants.AXIS_Y), 1)
                 self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
                 self.respawn_sound.startSound()
+                self.switch_camera(self.camera)
                 self.blinking_remaining = self.blinking_after_respawn_duration
                 self.player_model_material.blend_method = "BLEND"
                 self.is_fall_sound_triggered = False

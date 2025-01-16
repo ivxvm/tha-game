@@ -33,6 +33,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.particle_player = self.object.scene.objects["Player.ParticlePlayer"].components["ParticlePlayer"]
         self.character = bge.constraints.getCharacter(self.object)
         self.camera_pivot = self.object.children["Player.CameraPivot"]
+        self.camera = self.camera_pivot.children["Player.Camera.Primary"]
         self.model = self.object.children["Player.Model"]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
@@ -65,7 +66,11 @@ class PlayerController(bge.types.KX_PythonComponent):
             self.respawn_sound.startSound()
 
     def update(self):
+        if self.object.scene.active_camera != self.camera:
+            return
+
         delta = deltatime.update(self)
+
         is_dying = self.update_dying_status()
         if not is_dying:
             self.update_movement(delta)
