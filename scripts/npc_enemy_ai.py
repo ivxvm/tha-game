@@ -27,10 +27,13 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         ("Burning Animation", bpy.types.Object),
         ("Burning Particles Object", bpy.types.Object),
         ("Burst Particles Object", bpy.types.Object),
-        ("Weapon Model", bpy.types.Object),
-        ("Weapon Trail", bpy.types.Object),
         ("Npc Model", bpy.types.Object),
         ("Player", bpy.types.Object),
+        ("Weapon Rig", bpy.types.Object),
+        ("Weapon Model", bpy.types.Object),
+        ("Weapon Trail", bpy.types.Object),
+        ("Weapon-In-Hand Bone", "Weapon"),
+        ("Weapon-On-Back Bone", "WeaponBack"),
     ])
 
     def start(self, args):
@@ -49,9 +52,12 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.animation_player = self.rig.components["AnimationPlayer"]
         self.movement = self.object.components["NpcMovement"]
         self.nav = self.object.components["Navigator"]
+        self.weapon_rig = self.object.scene.objects[args["Weapon Rig"].name]
         self.weapon_model = self.object.scene.objects[args["Weapon Model"].name]
         self.weapon_trail_model = self.object.scene.objects[args["Weapon Trail"].name]
         self.weapon_trail = self.weapon_trail_model.components["WeaponTrail"]
+        self.weapon_in_hand_bone = args["Weapon-In-Hand Bone"]
+        self.weapon_on_back_bone = args["Weapon-On-Back Bone"]
         self.npc_model = self.object.scene.objects[args["Npc Model"].name]
         self.player = self.object.scene.objects[args["Player"].name]
         self.player_controller = self.player.components["PlayerController"]
@@ -150,6 +156,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
     def transition_idle(self):
         print("[npc_enemy_ai] transition_idle")
         self.movement.deactivate()
+        self.set_weapon_bone(self.weapon_on_back_bone)
         self.animation_player.play(self.idle_animation.name)
         self.idle_time = 0
         self.state = STATE_IDLE
@@ -165,6 +172,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
     def transition_stalking(self, target):
         print("[npc_enemy_ai] transition_stalking")
         self.movement.activate()
+        self.set_weapon_bone(self.weapon_in_hand_bone)
         self.animation_player.play(self.walk_animation.name)
         self.state = STATE_STALKING
 
@@ -189,6 +197,13 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.burst_particle_player.play(self.burst_duration)
         self.bursting_sound.startSound()
         self.state = STATE_BURSTING
+
+    def set_weapon_bone(self, name):
+        bone = self.weapon_rig.blenderObject.pose.bones["Bone"]
+        if bone.constraints["Copy Location"].subtarget != name:
+            bone.constraints["Copy Location"].subtarget = name
+        if bone.constraints["Copy Rotation"].subtarget != name:
+            bone.constraints["Copy Rotation"].subtarget = name
 
     def stalk_player_if_visible_and_reachable(self):
         now = bge.logic.getClockTime()
