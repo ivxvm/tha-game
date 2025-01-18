@@ -1,8 +1,6 @@
 import bge, bpy, deltatime
 from collections import OrderedDict
 
-PATROLLING_EPSILON = 1.0
-
 STATE_INIT = "STATE_INIT"
 STATE_IDLE = "STATE_IDLE"
 STATE_PATROLLING = "STATE_PATROLLING"
@@ -10,6 +8,8 @@ STATE_STALKING = "STATE_STALKING"
 STATE_ATTACKING = "STATE_ATTACKING"
 STATE_BURNING = "STATE_BURNING"
 STATE_BURSTING = "STATE_BURSTING"
+
+PATROLLING_EPSILON = 1.0
 
 def get_animation_definition(object):
     return bge.logic.getCurrentScene().objects[object.name].components["AnimationDefinition"]
@@ -64,6 +64,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.burning_scream_sound = self.object.actuators["BurningScreamSound"]
         self.burning_fire_sound = self.object.actuators["BurningFireSound"]
         self.bursting_sound = self.object.actuators["BurstingSound"]
+        self.unsheath_sound = self.object.actuators["SwordUnsheathSound"]
+        self.sheath_sound = self.object.actuators["SwordSheathSound"]
         self.state = STATE_INIT
         self.idle_time = 0.0
         self.patrolling_waypoints = []
@@ -159,6 +161,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.set_weapon_bone(self.weapon_on_back_bone)
         self.animation_player.play(self.idle_animation.name)
         self.idle_time = 0
+        if self.state == STATE_STALKING:
+            self.sheath_sound.startSound()
         self.state = STATE_IDLE
 
     def transition_patrolling(self):
@@ -174,6 +178,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.movement.activate()
         self.set_weapon_bone(self.weapon_in_hand_bone)
         self.animation_player.play(self.walk_animation.name)
+        if self.state == STATE_IDLE:
+            self.unsheath_sound.startSound()
         self.state = STATE_STALKING
 
     def transition_attacking(self, target):
