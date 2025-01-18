@@ -1,4 +1,4 @@
-import bge, bpy, constants, deltatime
+import bge, bpy, deltatime
 from collections import OrderedDict
 
 BLINKING_TRANSPARENCY = 0.5
@@ -8,9 +8,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
         ("Player", bpy.types.Object),
         ("Player Model",bpy.types.Object),
         ("Camera", bpy.types.Object),
-        ("Camera Pivot", bpy.types.Object),
         ("Secondary Camera", bpy.types.Object),
-        ("Respawn Anchors", bpy.types.Collection),
         ("Min Z", -100.0),
         ("Min Camera Z", -10.0),
         ("Blinking After Respawn Duration", 2.0),
@@ -23,9 +21,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
         self.player_model_material = self.player_model.blenderObject.data.materials[0]
         self.player_controller = self.player.components["PlayerController"]
         self.camera = self.object.scene.objects[args["Camera"].name]
-        self.camera_pivot = self.object.scene.objects[args["Camera Pivot"].name]
         self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
-        self.respawn_anchors = [self.object.scene.objects[object.name] for object in args["Respawn Anchors"].objects]
         self.min_z = args["Min Z"]
         self.min_camera_z = args["Min Camera Z"]
         self.blinking_after_respawn_duration = args["Blinking After Respawn Duration"]
@@ -33,7 +29,6 @@ class VoidFalling(bge.types.KX_PythonComponent):
         self.blinking_remaining = 0.0
         self.is_fall_sound_triggered = False
         self.fall_sound = self.object.actuators["FallSound"]
-        self.respawn_sound = self.object.actuators["RespawnSound"]
         deltatime.init(self)
 
     def update(self):
@@ -50,19 +45,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
         if self.player.worldPosition.z < self.min_z:
             self.player_controller.hp -= 1
             if self.player_controller.hp > 0:
-                last_tracked_position = self.player_controller.last_tracked_position
-                best_anchor = None
-                best_anchor_distance = 999999.0
-                for respawn_anchor in self.respawn_anchors:
-                    magnitude = (last_tracked_position - respawn_anchor.worldPosition).magnitude
-                    if magnitude < best_anchor_distance:
-                        best_anchor = respawn_anchor
-                        best_anchor_distance = magnitude
-                self.player_controller.proxy_physics.deactivate()
-                self.player.worldPosition = best_anchor.worldPosition.copy()
-                self.camera_pivot.alignAxisToVect(best_anchor.getAxisVect(constants.AXIS_Y), 1)
-                self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
-                self.respawn_sound.startSound()
+                self.player_controller.teleport_to_respawn_anchor()
                 self.switch_camera(self.camera)
                 self.blinking_remaining = self.blinking_after_respawn_duration
                 self.player_model_material.blend_method = "BLEND"

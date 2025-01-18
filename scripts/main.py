@@ -21,6 +21,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Game Over Text", bpy.types.Object),
         ("Primary Camera", bpy.types.Object),
         ("Secondary Camera", bpy.types.Object),
+        ("Respawn Anchors", bpy.types.Collection),
     ])
 
     def start(self, args):
@@ -37,6 +38,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.camera_pivot = self.object.children["Player.CameraPivot"]
         self.primary_camera = self.object.scene.objects[args["Primary Camera"].name]
         self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
+        self.respawn_anchors = [self.object.scene.objects[object.name] for object in args["Respawn Anchors"].objects]
         self.model = self.object.children["Player.Model"]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
@@ -77,10 +79,19 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         is_dying = self.update_dying_status()
         if not is_dying:
+            self.update_respawn_request()
             self.update_movement(delta)
             self.update_platform()
             self.update_jumping()
             self.update_casting(delta)
+
+    def update_respawn_request(self):
+        if bge.logic.keyboard.events[bge.events.RKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED:
+            if self.hp > 1:
+                self.hp -= 1
+                self.teleport_to_respawn_anchor()
+            else:
+                self.object.sendMessage("restart")
 
     def update_dying_status(self):
         now = bge.logic.getClockTime()
@@ -223,6 +234,19 @@ class PlayerController(bge.types.KX_PythonComponent):
                 if hit_target:
                     hit_target.components["NpcEnemyAi"].burn()
 
+    def teleport_to_respawn_anchor(self):
+        best_anchor = None
+        best_anchor_distance = 999999.0
+        for respawn_anchor in self.respawn_anchors:
+            magnitude = (self.last_tracked_position - respawn_anchor.worldPosition).magnitude
+            if magnitude < best_anchor_distance:
+                best_anchor = respawn_anchor
+                best_anchor_distance = magnitude
+        self.proxy_physics.deactivate()
+        self.object.worldPosition = best_anchor.worldPosition.copy()
+        self.camera_pivot.alignAxisToVect(best_anchor.getAxisVect(constants.AXIS_Y), 1)
+        self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
+        self.respawn_sound.startSound()
 
     def handle_flamethrower_end(self):
         self.is_casting = False
