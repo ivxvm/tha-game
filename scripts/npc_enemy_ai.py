@@ -9,6 +9,7 @@ STATE_ATTACKING = "STATE_ATTACKING"
 STATE_BURNING = "STATE_BURNING"
 STATE_BURSTING = "STATE_BURSTING"
 
+TARGET_RAYCAST_MASK = 4
 PATROLLING_EPSILON = 1.0
 
 def get_animation_definition(object):
@@ -17,6 +18,7 @@ def get_animation_definition(object):
 class NpcEnemyAi(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("Max Idle Time", 5.0),
+        ("Min Stalking Time", 1.0),
         ("Stalk Check Debounce Interval", 0.25),
         ("Melee Range", 2.0),
         ("Burning Duration", 1.0),
@@ -38,6 +40,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
 
     def start(self, args):
         self.max_idle_time = args["Max Idle Time"]
+        self.min_stalking_time = args["Min Stalking Time"]
         self.stalk_check_debounce_interval = args["Stalk Check Debounce Interval"]
         self.melee_range = args["Melee Range"]
         self.burning_duration = args["Burning Duration"]
@@ -74,6 +77,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.burning_elapsed = 0.0
         self.bursting_elapsed = 0.0
         self.last_stalk_check_timestamp = bge.logic.getClockTime()
+        self.stalking_duration = 0
         deltatime.init(self)
 
     def update(self):
@@ -119,10 +123,11 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             if self.movement.is_still:
                 self.animation_player.play(self.idle_animation.name)
                 self.movement.rotate_towards(self.player.worldPosition)
-                if not self.is_target_visible(self.player):
+                if self.stalking_duration > self.min_stalking_time:
                     self.transition_idle()
             else:
                 self.animation_player.play(self.walk_animation.name)
+        self.stalking_duration += delta
 
     def process_attacking(self, delta):
         if self.animation_player.is_playing(self.attack_animation.name):
@@ -180,6 +185,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.animation_player.play(self.walk_animation.name)
         if self.state == STATE_IDLE:
             self.unsheath_sound.startSound()
+        self.stalking_duration = 0
         self.state = STATE_STALKING
 
     def transition_attacking(self, target):
@@ -205,11 +211,10 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.state = STATE_BURSTING
 
     def set_weapon_bone(self, name):
-        bone = self.weapon_rig.blenderObject.pose.bones["Bone"]
-        if bone.constraints["Copy Location"].subtarget != name:
-            bone.constraints["Copy Location"].subtarget = name
-        if bone.constraints["Copy Rotation"].subtarget != name:
-            bone.constraints["Copy Rotation"].subtarget = name
+        weapon_bone = self.weapon_rig.blenderObject.pose.bones.get("Bone")
+        target_bone = self.rig.blenderObject.pose.bones.get(name)
+        weapon_bone.constraints["Copy Location"].subtarget = target_bone.name
+        weapon_bone.constraints["Copy Rotation"].subtarget = target_bone.name
 
     def stalk_player_if_visible_and_reachable(self):
         now = bge.logic.getClockTime()
@@ -218,7 +223,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             if self.is_target_visible(self.player):
                 self.movement.rotate_towards(self.player.worldPosition)
                 self.nav.update_target_position(self.player.worldPosition)
-                if self.nav.is_target_reachable():
+                is_player_reachable = self.nav.is_target_reachable() or self.is_melee_reachable(self.player)
+                if is_player_reachable and self.player_controller.hp > 0:
                     print("[npc_enemy_ai] player reachable")
                     self.transition_stalking(self.player)
                 else:
@@ -226,14 +232,11 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.last_stalk_check_timestamp = now
 
     def is_target_visible(self, target):
-        hit_target, _, _ = self.object.rayCast(target)
+        hit_target, _, _ = self.object.rayCast(target, mask=TARGET_RAYCAST_MASK)
         return hit_target == target
 
     def is_melee_reachable(self, target):
-        if target:
-            return (self.object.worldPosition - target.worldPosition).magnitude < self.melee_range
-        else:
-            return False
+        return (self.object.worldPosition - target.worldPosition).magnitude < self.melee_range
 
     def burn(self):
         if self.state != STATE_BURNING and self.state != STATE_BURSTING:
