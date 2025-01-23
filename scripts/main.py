@@ -17,6 +17,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Flamethrower Duration", 2.0),
         ("Flamethrower Raycast Delay", 0.5),
         ("Flamethrower Range", 3.0),
+        ("Player Rig", bpy.types.Object),
         ("Proxy Physics", bpy.types.Object),
         ("Game Over Text", bpy.types.Object),
         ("Primary Camera", bpy.types.Object),
@@ -39,7 +40,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.primary_camera = self.object.scene.objects[args["Primary Camera"].name]
         self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
         self.respawn_anchors = [self.object.scene.objects[object.name] for object in args["Respawn Anchors"].objects]
-        self.model = self.object.children["Player.Model"]
+        self.rig = self.object.scene.objects[args["Player Rig"].name]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
         self.respawn_sound = self.object.actuators["RespawnSound"]
@@ -47,7 +48,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.game_over_text = self.object.scene.objects[args["Game Over Text"].name]
         self.game_over_text.visible = False
         self.player_animator = PlayerAnimator(
-            armature=self.model,
+            armature=self.rig,
             speed=1.0,
             pre_falling_eta=args["Pre Falling Eta"])
         self.platform_raycast_vec = Vector([0, 0, -1.5])
@@ -145,7 +146,7 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         if is_running:
             move_vec.normalize()
-            self.model.worldOrientation = move_vec.to_track_quat("Y","Z").to_euler()
+            self.rig.worldOrientation = move_vec.to_track_quat("Y","Z").to_euler()
 
     def update_platform(self):
         now = bge.logic.getClockTime()
@@ -223,7 +224,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             self.casting_elapsed += delta
             forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
             forward[2] = 0
-            self.model.worldOrientation = forward.to_track_quat("Y","Z").to_euler()
+            self.rig.worldOrientation = forward.to_track_quat("Y","Z").to_euler()
 
             if self.powerup == POWERUP_FLAMETHROWER and self.casting_elapsed >= self.flamethrower_raycast_delay:
                 forward = self.camera_pivot.worldOrientation @ constants.AXIS_Y
@@ -262,7 +263,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             self.proxy_physics.object.setLinearVelocity(direction * knockback)
             direction[2] = 0
             if knockback > 0:
-                self.model.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
+                self.rig.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
             if self.hp <= 0:
                 if knockback > 0:
                     self.proxy_physics.object.worldOrientation = direction.to_track_quat("-Y","Z").to_euler()
