@@ -69,6 +69,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.bursting_sound = self.object.actuators["BurstingSound"]
         self.unsheath_sound = self.object.actuators["SwordUnsheathSound"]
         self.sheath_sound = self.object.actuators["SwordSheathSound"]
+        self.sword_whoosh_sounds = [self.object.actuators["SwordWhooshSound1"],
+                                    self.object.actuators["SwordWhooshSound2"]]
         self.state = STATE_INIT
         self.idle_time = 0.0
         self.patrolling_waypoints = []
@@ -78,6 +80,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.bursting_elapsed = 0.0
         self.last_stalk_check_timestamp = bge.logic.getClockTime()
         self.stalking_duration = 0
+        self.attack_phase = 0
         deltatime.init(self)
 
     def update(self):
@@ -135,6 +138,9 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             if progress > 0:
                 if not self.weapon_trail.is_active:
                     self.weapon_trail.activate()
+                if progress > 0.5 and self.attack_phase == 1:
+                    self.sword_whoosh_sounds[1].startSound()
+                    self.attack_phase = 0
                 if progress > 0.75:
                     self.set_speed_modifier(0.5)
                 else:
@@ -142,6 +148,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.movement.target_position = self.player.worldPosition
         elif self.is_melee_reachable(self.player) and self.player_controller.hp > 0:
             self.animation_player.play(self.attack_animation.name)
+            self.sword_whoosh_sounds[0].startSound()
+            self.attack_phase = 1
         else:
             self.weapon_trail.deactivate()
             self.set_speed_modifier(1.0)
@@ -192,6 +200,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         print("[npc_enemy_ai] transition_attacking")
         self.set_speed_modifier(0.75)
         self.animation_player.play(self.attack_animation.name)
+        self.sword_whoosh_sounds[0].startSound()
+        self.attack_phase = 1
         self.state = STATE_ATTACKING
 
     def transition_burning(self):
