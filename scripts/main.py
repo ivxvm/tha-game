@@ -22,7 +22,6 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Game Over Text", bpy.types.Object),
         ("Primary Camera", bpy.types.Object),
         ("Secondary Camera", bpy.types.Object),
-        ("Respawn Anchors", bpy.types.Collection),
     ])
 
     def start(self, args):
@@ -39,7 +38,8 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.camera_pivot = self.object.children["Player.CameraPivot"]
         self.primary_camera = self.object.scene.objects[args["Primary Camera"].name]
         self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
-        self.respawn_anchors = [self.object.scene.objects[object.name] for object in args["Respawn Anchors"].objects]
+        self.respawn_tracker = self.object.components["RespawnTracker"]
+        self.respawn_tracker.on_bind_anchor = self.handle_bind_anchor
         self.rig = self.object.scene.objects[args["Player Rig"].name]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
@@ -59,12 +59,14 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.powerup = ""
         self.multijumps_left = 0
         self.multijumps_done = 0
+        self.anchor_powerup = ""
+        self.anchor_multijumps_left = 0
+        self.anchor_multijumps_done = 0
         self.is_jumping = False
         self.is_casting = False
         self.casting_elapsed = 0.0
         self.hp = 3
         self.is_dying = False
-        self.last_tracked_position = Vector((0, 0, 0))
         deltatime.init(self)
         if bge.logic.globalDict.get("is_first_start", True):
             bge.logic.globalDict["is_first_start"] = False
@@ -90,7 +92,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         if bge.logic.keyboard.events[bge.events.RKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED:
             if self.hp > 1:
                 self.hp -= 1
-                self.teleport_to_respawn_anchor()
+                self.respawn_at_last_bound_anchor()
             else:
                 self.object.sendMessage("restart")
 
@@ -164,7 +166,6 @@ class PlayerController(bge.types.KX_PythonComponent):
                     self.prev_platform_orientation = self.platform.worldOrientation.copy()
             else:
                 if self.platform:
-                    self.last_tracked_position = self.object.worldPosition.copy()
                     self.platform = None
                     platform_changed = True
             if platform_changed:
@@ -235,18 +236,15 @@ class PlayerController(bge.types.KX_PythonComponent):
                 if hit_target:
                     hit_target.components["NpcEnemyAi"].burn()
 
-    def teleport_to_respawn_anchor(self):
-        best_anchor = None
-        best_anchor_distance = 999999.0
-        for respawn_anchor in self.respawn_anchors:
-            magnitude = (self.last_tracked_position - respawn_anchor.worldPosition).magnitude
-            if magnitude < best_anchor_distance:
-                best_anchor = respawn_anchor
-                best_anchor_distance = magnitude
+    def respawn_at_last_bound_anchor(self):
+        anchor = self.respawn_tracker.last_bound_anchor
         self.proxy_physics.deactivate()
-        self.object.worldPosition = best_anchor.worldPosition.copy()
-        self.camera_pivot.alignAxisToVect(best_anchor.getAxisVect(constants.AXIS_Y), 1)
+        self.object.worldPosition = anchor.worldPosition.copy()
+        self.camera_pivot.alignAxisToVect(anchor.getAxisVect(constants.AXIS_Y), 1)
         self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
+        self.powerup = self.anchor_powerup
+        self.multijumps_left = self.anchor_multijumps_left
+        self.multijumps_done = self.anchor_multijumps_done
         self.respawn_sound.startSound()
 
     def handle_flamethrower_end(self):
@@ -256,7 +254,6 @@ class PlayerController(bge.types.KX_PythonComponent):
 
     def handle_hit_proxy_physics(self, direction, knockback, damage):
         if not self.proxy_physics.is_active:
-            self.last_tracked_position = self.object.worldPosition.copy()
             was_already_dead = self.hp <= 0
             self.hp -= damage
             self.proxy_physics.activate()
@@ -270,6 +267,12 @@ class PlayerController(bge.types.KX_PythonComponent):
                     self.proxy_physics.object.applyRotation([math.pi / 2, 0, 0], True)
                 if not was_already_dead:
                     self.death_sound.startSound()
+
+    def handle_bind_anchor(self, anchor):
+        self.anchor_powerup = self.powerup
+        self.anchor_multijumps_left = self.multijumps_left
+        self.anchor_multijumps_done = self.multijumps_done
+        print("binding respawn anchor:", anchor, anchor.worldPosition)
 
 class PlayerAnimator():
     def __init__(self, armature, speed, pre_falling_eta):

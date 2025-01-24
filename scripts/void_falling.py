@@ -45,7 +45,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
         if self.player.worldPosition.z < self.min_z:
             self.player_controller.hp -= 1
             if self.player_controller.hp > 0:
-                self.player_controller.teleport_to_respawn_anchor()
+                self.player_controller.respawn_at_last_bound_anchor()
                 self.switch_camera(self.camera)
                 self.blinking_remaining = self.blinking_after_respawn_duration
                 self.player_model_material.blend_method = "BLEND"
