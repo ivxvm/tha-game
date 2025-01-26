@@ -20,8 +20,6 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Player Rig", bpy.types.Object),
         ("Proxy Physics", bpy.types.Object),
         ("Game Over Text", bpy.types.Object),
-        ("Primary Camera", bpy.types.Object),
-        ("Secondary Camera", bpy.types.Object),
     ])
 
     def start(self, args):
@@ -36,8 +34,6 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.particle_player = self.object.scene.objects["Player.ParticlePlayer"].components["ParticlePlayer"]
         self.character = bge.constraints.getCharacter(self.object)
         self.camera_pivot = self.object.children["Player.CameraPivot"]
-        self.primary_camera = self.object.scene.objects[args["Primary Camera"].name]
-        self.secondary_camera = self.object.scene.objects[args["Secondary Camera"].name]
         self.respawn_tracker = self.object.components["RespawnTracker"]
         self.respawn_tracker.on_bind_anchor = self.handle_bind_anchor
         self.rig = self.object.scene.objects[args["Player Rig"].name]
@@ -67,6 +63,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.casting_elapsed = 0.0
         self.hp = 3
         self.is_dying = False
+        self.is_blocked = False
         deltatime.init(self)
         if bge.logic.globalDict.get("is_first_start", True):
             bge.logic.globalDict["is_first_start"] = False
@@ -74,8 +71,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             self.respawn_sound.startSound()
 
     def update(self):
-        cam = self.object.scene.active_camera
-        if cam != self.primary_camera and cam != self.secondary_camera:
+        if self.is_blocked:
             return
 
         delta = deltatime.update(self)
