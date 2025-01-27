@@ -10,6 +10,7 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
         ("TriggerTarget", bpy.types.Object),
         ("TrackedObject", bpy.types.Object),
         ("Mode", {MODE_ONESHOT, MODE_REPEATABLE}),
+        ("DeleteAfterTrigger", True),
         ("Range", 2.0),
         ("RepeatCooldown", 3.0),
         ("RequiredItem", ""),
@@ -20,6 +21,7 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
         self.trigger_target = self.object.scene.objects[args["TriggerTarget"].name]
         self.tracked_object = self.object.scene.objects[args["TrackedObject"].name]
         self.mode = args["Mode"]
+        self.delete_after_trigger = args.get("DeleteAfterTrigger", True)
         self.range = args["Range"]
         self.repeat_cooldown = args["RepeatCooldown"]
         self.required_item = args["RequiredItem"]
@@ -56,7 +58,7 @@ class TriggerOnEnter(bge.types.KX_PythonComponent):
                             pass
                     self.finished = True
                     self.object.setVisible(False)
-                    if self.mode == MODE_ONESHOT:
+                    if self.mode == MODE_ONESHOT and self.delete_after_trigger:
                         self.object.endObject()
                 elif not is_item_missing:
                     self.object.blenderObject["is_item_missing"] = True
