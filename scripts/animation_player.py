@@ -1,13 +1,11 @@
-import bge, bpy
+import bge
 from collections import OrderedDict
+from animation_definition import AnimationDefinition
 
 class AnimationPlayer(bge.types.KX_PythonComponent):
-    args = OrderedDict([
-        ("Animation Definitions", bpy.types.Collection)
-    ])
+    args = OrderedDict([])
 
     def start(self, args):
-        self.animation_definitions = args["Animation Definitions"]
         self.is_initialized = False
         self.animations = {}
         self.current_animation_name = ""
@@ -15,11 +13,9 @@ class AnimationPlayer(bge.types.KX_PythonComponent):
     def update(self):
         if self.is_initialized:
             return
-        for object in self.animation_definitions.objects:
-            gameobject = self.object.scene.objects[object.name]
-            animdef = gameobject.components.get("AnimationDefinition", None)
-            if animdef:
-                self.animations[animdef.name] = animdef
+        for component in self.object.components:
+            if isinstance(component, AnimationDefinition):
+                self.animations[component.name] = component
         self.is_initialized = True
 
     def play(self, name):

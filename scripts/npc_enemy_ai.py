@@ -12,9 +12,6 @@ STATE_BURSTING = "STATE_BURSTING"
 TARGET_RAYCAST_MASK = 4
 PATROLLING_EPSILON = 1.0
 
-def get_animation_definition(object):
-    return bge.logic.getCurrentScene().objects[object.name].components["AnimationDefinition"]
-
 class NpcEnemyAi(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("Max Idle Time", 5.0),
@@ -23,10 +20,10 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         ("Melee Range", 2.0),
         ("Burning Duration", 1.0),
         ("Burst Duration", 0.25),
-        ("Idle Animation", bpy.types.Object),
-        ("Walk Animation", bpy.types.Object),
-        ("Attack Animation", bpy.types.Object),
-        ("Burning Animation", bpy.types.Object),
+        ("Idle Animation", "Idle"),
+        ("Walk Animation", "Running"),
+        ("Attack Animation", "AttackingWalking"),
+        ("Burning Animation", "Burning"),
         ("Burning Particles Object", bpy.types.Object),
         ("Burst Particles Object", bpy.types.Object),
         ("Npc Model", bpy.types.Object),
@@ -45,14 +42,12 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.melee_range = args["Melee Range"]
         self.burning_duration = args["Burning Duration"]
         self.burst_duration = args["Burst Duration"]
-        self.idle_animation = get_animation_definition(args["Idle Animation"])
-        self.walk_animation = get_animation_definition(args["Walk Animation"])
-        self.attack_animation = get_animation_definition(args["Attack Animation"])
-        self.burning_animation = get_animation_definition(args["Burning Animation"])
+        self.idle_animation_name = args["Idle Animation"]
+        self.walk_animation_name = args["Walk Animation"]
+        self.attack_animation_name = args["Attack Animation"]
+        self.burning_animation_name = args["Burning Animation"]
         self.burning_particle_player = self.object.scene.objects[args["Burning Particles Object"].name].components["ParticlePlayer"]
         self.burst_particle_player = self.object.scene.objects[args["Burst Particles Object"].name].components["ParticlePlayer"]
-        self.rig = self.object.children[0]
-        self.animation_player = self.rig.components["AnimationPlayer"]
         self.movement = self.object.components["NpcMovement"]
         self.nav = self.object.components["Navigator"]
         self.weapon_rig = self.object.scene.objects[args["Weapon Rig"].name]
@@ -71,6 +66,8 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.sheath_sound = self.object.actuators["SwordSheathSound"]
         self.sword_whoosh_sounds = [self.object.actuators["SwordWhooshSound1"],
                                     self.object.actuators["SwordWhooshSound2"]]
+        self.rig = self.object.children[0]
+        self.animation_player = self.rig.components["AnimationPlayer"]
         self.state = STATE_INIT
         self.idle_time = 0.0
         self.patrolling_waypoints = []
@@ -87,6 +84,10 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         delta = deltatime.update(self)
         if self.state == STATE_INIT:
             self.original_movement_speed = self.movement.movement_speed
+            self.idle_animation = self.animation_player.animations[self.idle_animation_name]
+            self.walk_animation = self.animation_player.animations[self.walk_animation_name]
+            self.attack_animation = self.animation_player.animations[self.attack_animation_name]
+            self.burning_animation = self.animation_player.animations[self.burning_animation_name]
             self.transition_idle()
         elif self.state == STATE_IDLE:
             self.process_idle(delta)
