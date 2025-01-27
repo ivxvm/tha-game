@@ -36,6 +36,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.camera_pivot = self.object.children["Player.CameraPivot"]
         self.respawn_tracker = self.object.components["RespawnTracker"]
         self.respawn_tracker.on_bind_anchor = self.handle_bind_anchor
+        self.blinking = self.object.components["Blinking"]
         self.rig = self.object.scene.objects[args["Player Rig"].name]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
@@ -242,6 +243,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.multijumps_left = self.anchor_multijumps_left
         self.multijumps_done = self.anchor_multijumps_done
         self.respawn_sound.startSound()
+        self.blinking.activate()
 
     def handle_flamethrower_end(self):
         self.is_casting = False
