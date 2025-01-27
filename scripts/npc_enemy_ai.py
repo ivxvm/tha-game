@@ -20,10 +20,6 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         ("Melee Range", 2.0),
         ("Burning Duration", 1.0),
         ("Burst Duration", 0.25),
-        ("Idle Animation", "Idle"),
-        ("Walk Animation", "Running"),
-        ("Attack Animation", "AttackingWalking"),
-        ("Burning Animation", "Burning"),
         ("Burning Particles Object", bpy.types.Object),
         ("Burst Particles Object", bpy.types.Object),
         ("Npc Model", bpy.types.Object),
@@ -33,6 +29,10 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         ("Weapon Trail", bpy.types.Object),
         ("Weapon-In-Hand Bone", "Weapon"),
         ("Weapon-On-Back Bone", "WeaponBack"),
+        ("Idle Animation", "Idle"),
+        ("Walk Animation", "Running"),
+        ("Attack Animation", "AttackingWalking"),
+        ("Burning Animation", "Burning"),
     ])
 
     def start(self, args):
@@ -84,10 +84,6 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         delta = deltatime.update(self)
         if self.state == STATE_INIT:
             self.original_movement_speed = self.movement.movement_speed
-            self.idle_animation = self.animation_player.animations[self.idle_animation_name]
-            self.walk_animation = self.animation_player.animations[self.walk_animation_name]
-            self.attack_animation = self.animation_player.animations[self.attack_animation_name]
-            self.burning_animation = self.animation_player.animations[self.burning_animation_name]
             self.transition_idle()
         elif self.state == STATE_IDLE:
             self.process_idle(delta)
@@ -125,16 +121,16 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
             self.nav.update_target_position(self.player.worldPosition)
             self.movement.target_position = self.nav.get_next_path_position()
             if self.movement.is_still:
-                self.animation_player.play(self.idle_animation.name)
+                self.animation_player.play(self.idle_animation_name)
                 self.movement.rotate_towards(self.player.worldPosition)
                 if self.stalking_duration > self.min_stalking_time:
                     self.transition_idle()
             else:
-                self.animation_player.play(self.walk_animation.name)
+                self.animation_player.play(self.walk_animation_name)
         self.stalking_duration += delta
 
     def process_attacking(self, delta):
-        if self.animation_player.is_playing(self.attack_animation.name):
+        if self.animation_player.is_playing(self.attack_animation_name):
             progress = self.animation_player.get_playback_progress()
             if progress > 0:
                 if not self.weapon_trail.is_active:
@@ -148,7 +144,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
                     self.set_speed_modifier(0.75)
             self.movement.target_position = self.player.worldPosition
         elif self.is_melee_reachable(self.player) and self.player_controller.hp > 0:
-            self.animation_player.play(self.attack_animation.name)
+            self.animation_player.play(self.attack_animation_name)
             self.sword_whoosh_sounds[0].startSound()
             self.attack_phase = 1
         else:
@@ -173,7 +169,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         print("[npc_enemy_ai] transition_idle")
         self.movement.deactivate()
         self.set_weapon_bone(self.weapon_on_back_bone)
-        self.animation_player.play(self.idle_animation.name)
+        self.animation_player.play(self.idle_animation_name)
         self.idle_time = 0
         if self.state == STATE_STALKING:
             self.sheath_sound.startSound()
@@ -184,14 +180,14 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
         self.patrolling_target_waypoint_index = (self.patrolling_target_waypoint_index + 1) % len(self.patrolling_waypoints)
         self.nav.update_target_position(self.patrolling_waypoints[self.patrolling_target_waypoint_index].worldPosition)
         self.movement.activate()
-        self.animation_player.play(self.walk_animation.name)
+        self.animation_player.play(self.walk_animation_name)
         self.state = STATE_PATROLLING
 
     def transition_stalking(self, target):
         print("[npc_enemy_ai] transition_stalking")
         self.movement.activate()
         self.set_weapon_bone(self.weapon_in_hand_bone)
-        self.animation_player.play(self.walk_animation.name)
+        self.animation_player.play(self.walk_animation_name)
         if self.state == STATE_IDLE:
             self.unsheath_sound.startSound()
         self.stalking_duration = 0
@@ -200,14 +196,14 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
     def transition_attacking(self, target):
         print("[npc_enemy_ai] transition_attacking")
         self.set_speed_modifier(0.75)
-        self.animation_player.play(self.attack_animation.name)
+        self.animation_player.play(self.attack_animation_name)
         self.sword_whoosh_sounds[0].startSound()
         self.attack_phase = 1
         self.state = STATE_ATTACKING
 
     def transition_burning(self):
         self.movement.deactivate()
-        self.animation_player.play(self.burning_animation.name)
+        self.animation_player.play(self.burning_animation_name)
         self.burning_particle_player.play(self.burning_duration)
         self.burning_scream_sound.startSound()
         self.burning_fire_sound.startSound()
