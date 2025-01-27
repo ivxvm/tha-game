@@ -1,10 +1,12 @@
 import bge, bpy
 from collections import OrderedDict
 
+STATE_INIT = "STATE_INIT"
 STATE_STOPPED = "STATE_STOPPED"
 STATE_PLAYING = "STATE_PLAYING"
 STATE_FADE_IN = "STATE_FADE_IN"
 STATE_FADE_OUT = "STATE_FADE_OUT"
+
 FAKE_SOUND_TIME = 999.0
 
 class SoundLooper(bge.types.KX_PythonComponent):
@@ -22,19 +24,23 @@ class SoundLooper(bge.types.KX_PythonComponent):
         self.volume_controller = self.object.components.get("SoundVolumeByDistance")
         self.fade_in = args["Fade In"]
         self.fade_out = args["Fade Out"]
-        self.state = STATE_STOPPED
+        self.auto_start = args["Auto Start"]
         self.fade_timestamp = bge.logic.getClockTime()
         self.config_volume = self.sound.volume
         self.sound.volume = 0.0
-        self.sound.startSound()
         self.sound.time = FAKE_SOUND_TIME
-        if args["Auto Start"]:
-            self.state = STATE_FADE_IN
-            self.sound.time = 0.0
+        self.state = STATE_INIT
 
     def update(self):
         volume = self.get_volume()
-        if self.state == STATE_FADE_IN:
+        if self.state == STATE_INIT:
+            self.sound.startSound()
+            if self.auto_start:
+                self.state = STATE_FADE_IN
+                self.sound.time = 0.0
+            else:
+                self.state = STATE_STOPPED
+        elif self.state == STATE_FADE_IN:
             fade_duration = bge.logic.getClockTime() - self.fade_timestamp
             self.sound.volume = volume * min(1.0, fade_duration / self.fade_in)
             if fade_duration > self.fade_in:
