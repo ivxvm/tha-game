@@ -3,8 +3,14 @@ from collections import OrderedDict
 from mathutils import Vector, Matrix
 
 PLATFORM_RAYCAST_MASK = 1 | 2
+
 POWERUP_MULTI_JUMP = "Multi Jump"
 POWERUP_FLAMETHROWER = "Flamethrower"
+
+STATE_IDLE = "STATE_IDLE"
+STATE_RUNNING = "STATE_RUNNING"
+STATE_FALLING = "STATE_FALLING"
+STATE_CASTING = "STATE_CASTING"
 
 class PlayerController(bge.types.KX_PythonComponent):
     """My take on platformer-like 3rd person player controller"""
@@ -20,6 +26,13 @@ class PlayerController(bge.types.KX_PythonComponent):
         ("Player Rig", bpy.types.Object),
         ("Proxy Physics", bpy.types.Object),
         ("Game Over Text", bpy.types.Object),
+        ("Idle Animation", "Idle"),
+        ("Running Animation", "Running"),
+        ("Jumping Animation", "Jumping"),
+        ("Falling Animation", "Falling"),
+        ("Casting Animation", "Casting"),
+        ("Dying Animation", "Dying"),
+        ("Dead Animation", "Dead"),
     ])
 
     def start(self, args):
@@ -38,33 +51,42 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.respawn_tracker.on_bind_anchor = self.handle_bind_anchor
         self.blinking = self.object.components["Blinking"]
         self.rig = self.object.scene.objects[args["Player Rig"].name]
+        self.animation_player = self.rig.components["AnimationPlayer"]
         self.jump_sound = self.object.actuators["JumpSound"]
         self.flamethrower_sound = self.object.actuators["FlamethrowerSound"]
         self.respawn_sound = self.object.actuators["RespawnSound"]
         self.death_sound = self.object.actuators["DeathSound"]
         self.game_over_text = self.object.scene.objects[args["Game Over Text"].name]
         self.game_over_text.visible = False
-        self.player_animator = PlayerAnimator(
-            armature=self.rig,
-            speed=1.0,
-            pre_falling_eta=args["Pre Falling Eta"])
-        self.platform_raycast_vec = Vector([0, 0, -1.5])
-        self.platform = None
+        self.idle_animation_name = args["Idle Animation"]
+        self.running_animation_name = args["Running Animation"]
+        self.jumping_animation_name = args["Jumping Animation"]
+        self.falling_animation_name = args["Falling Animation"]
+        self.casting_animation_name = args["Casting Animation"]
+        self.dying_animation_name = args["Dying Animation"]
+        self.dead_animation_name = args["Dead Animation"]
+        self.pre_falling_eta = args["Pre Falling Eta"]
+        self.pre_falling_delta = 0
+        self.state = STATE_IDLE
+        self.last_grounded_timestamp = bge.logic.getClockTime()
+        self.last_platform_change_timestamp = bge.logic.getClockTime()
         self.prev_platform_position = Vector([0, 0, 0])
         self.prev_platform_orientation = Matrix.Rotation(0, 4, "Z")
-        self.last_platform_change_timestamp = bge.logic.getClockTime()
+        self.platform_raycast_vec = Vector([0, 0, -1.5])
+        self.platform = None
+        self.hp = 3
         self.powerup = ""
         self.multijumps_left = 0
         self.multijumps_done = 0
         self.anchor_powerup = ""
         self.anchor_multijumps_left = 0
         self.anchor_multijumps_done = 0
+        self.is_dying = False
+        self.is_blocked = False
         self.is_jumping = False
         self.is_casting = False
         self.casting_elapsed = 0.0
-        self.hp = 3
-        self.is_dying = False
-        self.is_blocked = False
+        self.animation_player.play(self.idle_animation_name)
         deltatime.init(self)
         if bge.logic.globalDict.get("is_first_start", True):
             bge.logic.globalDict["is_first_start"] = False
@@ -100,14 +122,14 @@ class PlayerController(bge.types.KX_PythonComponent):
             delta = now - self.death_timestamp
             if delta >= self.restart_delay:
                 self.object.sendMessage("restart")
-            if not self.player_animator.armature.isPlayingAction():
-                self.player_animator.play_dead()
+            if not self.rig.isPlayingAction():
+                self.animation_player.play(self.dead_animation_name)
             return True
         elif self.hp <= 0:
             self.is_dying = True
             self.death_timestamp = bge.logic.getClockTime()
-            self.player_animator.armature.stopAction()
-            self.player_animator.play_dying()
+            self.rig.stopAction()
+            self.animation_player.play(self.dying_animation_name)
             utils.trigger_all_components(self.game_over_text)
             self.game_over_text.visible = True
             return True
@@ -140,8 +162,8 @@ class PlayerController(bge.types.KX_PythonComponent):
 
         is_running = speed_x != 0 or speed_y != 0
 
-        self.player_animator.set_running(is_running)
-        self.player_animator.set_grounded(self.character.onGround)
+        self.set_running(is_running)
+        self.set_grounded(self.character.onGround)
 
         if is_running:
             move_vec.normalize()
@@ -202,7 +224,7 @@ class PlayerController(bge.types.KX_PythonComponent):
                     self.is_jumping = True
                     self.jump_sound.pitch = 1.0 + self.multijumps_done
                     self.jump_sound.startSound()
-                    self.player_animator.play_jumping()
+                    self.animation_player.play(self.jumping_animation_name)
                     if self.multijumps_left <= 0:
                         self.powerup = ""
                         self.multijumps_done = 0
@@ -214,7 +236,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             if self.powerup == POWERUP_FLAMETHROWER and not self.is_casting:
                 self.is_casting = True
                 self.casting_elapsed = 0.0
-                self.player_animator.set_casting(True)
+                self.set_casting(True)
                 self.particle_player.play(self.flamethrower_duration, self.handle_flamethrower_end)
                 self.flamethrower_sound.startSound()
 
@@ -247,7 +269,7 @@ class PlayerController(bge.types.KX_PythonComponent):
 
     def handle_flamethrower_end(self):
         self.is_casting = False
-        self.player_animator.set_casting(False)
+        self.set_casting(False)
         self.powerup = ""
 
     def handle_hit_proxy_physics(self, direction, knockback, damage):
@@ -272,45 +294,36 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.anchor_multijumps_done = self.multijumps_done
         print("binding respawn anchor:", anchor, anchor.worldPosition)
 
-class PlayerAnimator():
-    def __init__(self, armature, speed, pre_falling_eta):
-        self.armature = armature
-        self.speed = speed
-        self.pre_falling_eta = pre_falling_eta
-        self.state = "IDLE"
-        self.play_idle()
-        self.last_grounded_timestamp = bge.logic.getClockTime()
-        self.pre_falling_delta = 0
-
     def set_running(self, value):
-        if self.state == "IDLE":
+        if self.state == STATE_IDLE:
             if value:
-                self.armature.stopAction()
-                self.play_running()
-                self.state = "RUNNING"
+                self.rig.stopAction()
+                self.animation_player.play(self.running_animation_name)
+                self.state = STATE_RUNNING
                 print("self.state", self.state)
-        elif self.state == "RUNNING":
+        elif self.state == STATE_RUNNING:
             if not value:
-                self.armature.stopAction()
-                self.play_idle()
-                self.state = "IDLE"
+                self.rig.stopAction()
+                self.animation_player.play(self.idle_animation_name)
+                self.animation_player.play(self.idle_animation_name)
+                self.state = STATE_IDLE
                 print("self.state", self.state)
 
     def set_grounded(self, value):
         current_grounded_timestamp = bge.logic.getClockTime()
-        if self.state == "FALLING":
+        if self.state == STATE_FALLING:
             if value:
-                self.armature.stopAction()
-                self.play_idle()
-                self.state = "IDLE"
+                self.rig.stopAction()
+                self.animation_player.play(self.idle_animation_name)
+                self.state = STATE_IDLE
                 print("self.state", self.state)
-        elif self.state != "JUMPING" and self.state != "CASTING":
+        elif self.state != "JUMPING" and self.state != STATE_CASTING:
             if not value:
                 self.pre_falling_delta += current_grounded_timestamp - self.last_grounded_timestamp
                 if self.pre_falling_delta > self.pre_falling_eta:
-                    self.armature.stopAction()
-                    self.play_falling()
-                    self.state = "FALLING"
+                    self.rig.stopAction()
+                    self.animation_player.play(self.falling_animation_name)
+                    self.state = STATE_FALLING
                     self.pre_falling_delta = 0
                     print("self.state", self.state)
             else:
@@ -318,32 +331,11 @@ class PlayerAnimator():
         self.last_grounded_timestamp = current_grounded_timestamp
 
     def set_casting(self, value):
-        if value and self.state != "CASTING":
-            self.armature.stopAction()
-            self.play_casting()
-            self.state = "CASTING"
-        elif not value and self.state == "CASTING":
-            self.armature.stopAction()
-            self.play_idle()
-            self.state = "IDLE"
-
-    def play_idle(self):
-        self.armature.playAction("Idle", 0, 16, 0, 0, 0, 1, 0, 0, self.speed * 0.5)
-
-    def play_running(self):
-        self.armature.playAction("Running", 0, 20, 0, 0, 0, 1, 0, 0, self.speed)
-
-    def play_jumping(self):
-        self.armature.playAction("Jumping", 4, 8, 0, 0, 0, 0, 0, 0, self.speed * 2)
-
-    def play_falling(self):
-        self.armature.playAction("Falling", 0, 32, 0, 0, 0, 1, 0, 0, self.speed)
-
-    def play_casting(self):
-        self.armature.playAction("Casting", 0, 16, 0, 0, 0, 1, 0, 0, self.speed)
-
-    def play_dying(self):
-        self.armature.playAction("Dying", 0, 8, 0, 0, 0, 0, 0, 0, self.speed)
-
-    def play_dead(self):
-        self.armature.playAction("Dead", 0, 1, 0, 0, 0, 1, 0, 0, self.speed)
+        if value and self.state != STATE_CASTING:
+            self.rig.stopAction()
+            self.animation_player.play(self.casting_animation_name)
+            self.state = STATE_CASTING
+        elif not value and self.state == STATE_CASTING:
+            self.rig.stopAction()
+            self.animation_player.play(self.idle_animation_name)
+            self.state = STATE_IDLE
