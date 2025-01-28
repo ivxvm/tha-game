@@ -53,7 +53,7 @@ class RotationDiscrete(bge.types.KX_PythonComponent):
                 self.rotation_elapsed += delta
                 progress = min(1, self.rotation_elapsed / self.duration)
                 if self.is_moving_backwards:
-                    progress = 1 - progress
+                    progress = -progress
                 rotation_matrix = self.initial_orientation.copy()
                 rotation_matrix.rotate(Matrix.Rotation(progress * self.angle, 4, self.axis))
                 self.object.localOrientation = rotation_matrix
