@@ -261,6 +261,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.object.worldPosition = anchor.worldPosition.copy()
         self.camera_pivot.alignAxisToVect(anchor.getAxisVect(constants.AXIS_Y), 1)
         self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
+        self.object.scene.active_camera = self.camera_pivot.children[0]
         self.powerup = self.anchor_powerup
         self.multijumps_left = self.anchor_multijumps_left
         self.multijumps_done = self.anchor_multijumps_done
