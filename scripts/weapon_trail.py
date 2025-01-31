@@ -79,19 +79,21 @@ class WeaponTrail(bge.types.KX_PythonComponent):
             self.cooldown = self.reinstance_interval
 
     def activate(self):
-        print("[weapon_trail] activating")
-        self.object.restorePhysics()
-        self.object.worldPosition = self.owner.worldPosition
-        bmesh.ops.delete(self.trail_bm, geom=self.trail_bm.verts)
-        self.trail_bm.to_mesh(self.object.blenderObject.data)
-        self.last_vertex_row = []
-        self.face_groups = []
-        self.is_active = True
+        if not self.is_active:
+            print("[weapon_trail] activating")
+            self.object.restorePhysics()
+            self.object.worldPosition = self.owner.worldPosition
+            bmesh.ops.delete(self.trail_bm, geom=self.trail_bm.verts)
+            self.trail_bm.to_mesh(self.object.blenderObject.data)
+            self.last_vertex_row = []
+            self.face_groups = []
+            self.is_active = True
 
     def deactivate(self):
-        print("[weapon_trail] deactivating")
-        self.object.suspendPhysics()
-        bmesh.ops.delete(self.trail_bm, geom=self.trail_bm.verts)
-        self.trail_bm.to_mesh(self.object.blenderObject.data)
-        self.trail_bm.verts.ensure_lookup_table()
-        self.is_active = False
+        if self.is_active:
+            print("[weapon_trail] deactivating")
+            self.object.suspendPhysics()
+            bmesh.ops.delete(self.trail_bm, geom=self.trail_bm.verts)
+            self.trail_bm.to_mesh(self.object.blenderObject.data)
+            self.trail_bm.verts.ensure_lookup_table()
+            self.is_active = False

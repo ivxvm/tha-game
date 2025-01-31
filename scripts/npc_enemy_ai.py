@@ -203,6 +203,7 @@ class NpcEnemyAi(bge.types.KX_PythonComponent):
 
     def transition_burning(self):
         self.movement.deactivate()
+        self.weapon_trail.deactivate()
         self.animation_player.play(self.burning_animation_name)
         self.burning_particle_player.play(self.burning_duration)
         self.burning_scream_sound.startSound()
