@@ -1,10 +1,6 @@
-import bge, math, deltatime
+import bge, math, deltatime, constants
 from collections import OrderedDict
 from mathutils import Matrix
-
-AXIS_X = "X"
-AXIS_Y = "Y"
-AXIS_Z = "Z"
 
 START_TYPE_ON_LOAD = "OnLoad"
 START_TYPE_ON_TRIGGER = "OnTrigger"
@@ -18,7 +14,7 @@ STATE_DELAY = "DELAY"
 
 class RotationDiscrete(bge.types.KX_PythonComponent):
     args = OrderedDict([
-        ("Axis", {AXIS_X, AXIS_Y, AXIS_Z}),
+        ("Axis", constants.AXIS_Z),
         ("Angle", 90.0),
         ("Duration", 5.0),
         ("StartType", {START_TYPE_ON_LOAD, START_TYPE_ON_TRIGGER}),
@@ -55,7 +51,7 @@ class RotationDiscrete(bge.types.KX_PythonComponent):
                 if self.is_moving_backwards:
                     progress = -progress
                 rotation_matrix = self.initial_orientation.copy()
-                rotation_matrix.rotate(Matrix.Rotation(progress * self.angle, 4, self.axis))
+                rotation_matrix.rotate(Matrix.Rotation(progress * self.angle, 4, self.object.getAxisVect(self.axis)))
                 self.object.localOrientation = rotation_matrix
                 if self.rotation_elapsed >= self.duration:
                     if self.motion_type == MOTION_TYPE_PING_PONG:
