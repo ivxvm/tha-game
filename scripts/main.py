@@ -176,8 +176,7 @@ class PlayerController(bge.types.KX_PythonComponent):
             platform_changed = False
             if self.character.onGround:
                 self.is_jumping = False
-                position = self.object.worldPosition
-                hit_target, _, _ = self.object.rayCast(position + self.platform_raycast_vec, mask=PLATFORM_RAYCAST_MASK)
+                hit_target = self.raycast_platform()
                 if hit_target and self.platform != hit_target:
                     self.platform = hit_target
                     platform_changed = True
@@ -208,15 +207,16 @@ class PlayerController(bge.types.KX_PythonComponent):
 
     def update_jumping(self):
         keyboard = bge.logic.keyboard.events
+        is_jump_just_pressed = keyboard[bge.events.SPACEKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED
 
         if keyboard[bge.events.SPACEKEY]:
-            if self.platform:
+            if self.platform or is_jump_just_pressed and self.raycast_platform():
                 self.character.jump()
                 self.is_jumping = True
                 self.jump_sound.pitch = 1.0
                 self.jump_sound.startSound()
             elif self.powerup == POWERUP_MULTI_JUMP:
-                if keyboard[bge.events.SPACEKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED:
+                if is_jump_just_pressed:
                     if self.is_jumping:
                         self.multijumps_left -= 1
                         self.multijumps_done += 1
@@ -254,6 +254,11 @@ class PlayerController(bge.types.KX_PythonComponent):
                 hit_target, _, _ = self.object.rayCast(raycast_to, raycast_from, mask=0b1000)
                 if hit_target:
                     hit_target.components["NpcEnemyAi"].burn()
+
+    def raycast_platform(self):
+        position = self.object.worldPosition
+        hit_target, _, _ = self.object.rayCast(position + self.platform_raycast_vec, mask=PLATFORM_RAYCAST_MASK)
+        return hit_target
 
     def respawn_at_last_bound_anchor(self):
         anchor = self.respawn_tracker.last_bound_anchor
