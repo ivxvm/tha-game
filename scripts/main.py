@@ -318,10 +318,10 @@ class PlayerController(bge.types.KX_PythonComponent):
                 self.animation_player.play(self.idle_animation_name)
                 self.state = STATE_IDLE
                 print("self.state", self.state)
-        elif self.state != "JUMPING" and self.state != STATE_CASTING:
+        elif self.state != STATE_CASTING:
             if not value:
                 self.pre_falling_delta += current_grounded_timestamp - self.last_grounded_timestamp
-                if self.pre_falling_delta > self.pre_falling_eta:
+                if self.is_jumping or self.pre_falling_delta > self.pre_falling_eta:
                     self.rig.stopAction()
                     self.animation_player.play(self.falling_animation_name)
                     self.state = STATE_FALLING
