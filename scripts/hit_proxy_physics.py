@@ -16,6 +16,7 @@ class HitProxyPhysics(bge.types.KX_PythonComponent):
         ("Damage", 0),
         ("Collision Center Offset", [0.0, 0.0, 0.0]),
         ("Debounce Interval", DEFAULT_DEBOUNCE_INTERVAL),
+        ("Silent", False),
     ])
 
     def start(self, args):
@@ -27,6 +28,7 @@ class HitProxyPhysics(bge.types.KX_PythonComponent):
         self.damage = args.get("Damage", 0)
         self.offset = Vector(args["Collision Center Offset"])
         self.debounce_interval = args.get("Debounce Interval", DEFAULT_DEBOUNCE_INTERVAL)
+        self.silent = args.get("Silent", False)
         self.last_hit_object = None
         self.last_hit_object_proxy_physics = None
         self.object.collisionCallbacks.append(self.handle_collision)
@@ -51,5 +53,8 @@ class HitProxyPhysics(bge.types.KX_PythonComponent):
                     pivot = self.knockback_pivot_object.worldPosition
                 elif self.knockback_pivot == KNOCKBACK_PIVOT_HIT_POSITION:
                     pivot = hit_position
-                proxy_physics.hit(other.worldPosition - (pivot + self.offset), self.knockback, self.damage)
+                proxy_physics.hit(direction=(other.worldPosition - (pivot + self.offset)),
+                                  knockback=self.knockback,
+                                  damage=self.damage,
+                                  silent=self.silent)
                 self.elapsed_since_last_hit = 0.0
