@@ -18,7 +18,7 @@ class CameraControls(bge.types.KX_PythonComponent):
         self.max_camera_distance = args["Max Camera Distance"]
         self.camera = self.object.scene.objects[args["Camera"].name]
         self.mouse = self.object.sensors["Mouse"]
-        self.camera_distance = self.min_camera_distance
+        self.camera_distance = (self.min_camera_distance + self.max_camera_distance) / 2
 
     def update(self):
         mouse_events = bge.logic.mouse.events
