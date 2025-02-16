@@ -81,6 +81,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.anchor_powerup = ""
         self.anchor_multijumps_left = 0
         self.anchor_multijumps_done = 0
+        self.is_initialized = False
         self.is_dying = False
         self.is_blocked = False
         self.is_jumping = False
@@ -88,12 +89,15 @@ class PlayerController(bge.types.KX_PythonComponent):
         self.casting_elapsed = 0.0
         self.animation_player.play(self.idle_animation_name)
         deltatime.init(self)
-        if bge.logic.globalDict.get("is_first_start", True):
-            bge.logic.globalDict["is_first_start"] = False
-        else:
-            self.respawn_sound.startSound()
 
     def update(self):
+        if not self.is_initialized:
+            self.is_initialized = True
+            is_first_start = bge.logic.globalDict.get("is_first_start", True)
+            if is_first_start:
+                bge.logic.globalDict["is_first_start"] = False
+            self.respawn_at_last_bound_anchor(silent=is_first_start)
+
         if self.is_blocked:
             return
 
@@ -260,18 +264,20 @@ class PlayerController(bge.types.KX_PythonComponent):
         hit_target, _, _ = self.object.rayCast(position + self.platform_raycast_vec, mask=PLATFORM_RAYCAST_MASK)
         return hit_target
 
-    def respawn_at_last_bound_anchor(self):
+    def respawn_at_last_bound_anchor(self, silent=False):
         anchor = self.respawn_tracker.last_bound_anchor
         self.proxy_physics.deactivate()
         self.object.worldPosition = anchor.worldPosition.copy()
-        self.camera_pivot.alignAxisToVect(anchor.getAxisVect(constants.AXIS_Y), 1)
-        self.camera_pivot.alignAxisToVect(constants.AXIS_Z, 2)
+        for object in [self.camera_pivot, self.rig]:
+            object.alignAxisToVect(anchor.getAxisVect(constants.AXIS_Y), 1)
+            object.alignAxisToVect(constants.AXIS_Z, 2)
         self.object.scene.active_camera = self.camera_pivot.children[0]
         self.powerup = self.anchor_powerup
         self.multijumps_left = self.anchor_multijumps_left
         self.multijumps_done = self.anchor_multijumps_done
-        self.respawn_sound.startSound()
-        self.blinking.activate()
+        if not silent:
+            self.respawn_sound.startSound()
+            self.blinking.activate()
 
     def handle_flamethrower_end(self):
         self.is_casting = False
