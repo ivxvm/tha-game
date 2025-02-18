@@ -7,7 +7,6 @@ STILLNESS_FRAMES = 3
 class ProxyPhysics(bge.types.KX_PythonComponent):
     args = OrderedDict([
         ("Target Object", bpy.types.Object),
-        ("Stillness Eta", 0.1),
     ])
 
     def start(self, args):
