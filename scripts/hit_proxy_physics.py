@@ -53,7 +53,7 @@ class HitProxyPhysics(bge.types.KX_PythonComponent):
                     pivot = self.knockback_pivot_object.worldPosition
                 elif self.knockback_pivot == KNOCKBACK_PIVOT_HIT_POSITION:
                     pivot = hit_position
-                proxy_physics.hit(direction=(other.worldPosition - (pivot + self.offset)),
+                proxy_physics.hit(direction=(other.worldPosition - (pivot + self.offset)).normalized(),
                                   knockback=self.knockback,
                                   damage=self.damage,
                                   silent=self.silent)
