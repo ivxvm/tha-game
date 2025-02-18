@@ -179,6 +179,7 @@ class PlayerController(bge.types.KX_PythonComponent):
         if now - self.last_platform_change_timestamp > self.platform_change_cooldown:
             platform_changed = False
             if self.character.onGround:
+                self.character.maxJumps = 1
                 self.is_jumping = False
                 hit_target = self.raycast_platform()
                 if hit_target and self.platform != hit_target:
@@ -224,6 +225,7 @@ class PlayerController(bge.types.KX_PythonComponent):
                     if self.is_jumping:
                         self.multijumps_left -= 1
                         self.multijumps_done += 1
+                    self.character.maxJumps = self.character.jumpCount + 1
                     self.character.jump()
                     self.is_jumping = True
                     self.jump_sound.pitch = 1.0 + self.multijumps_done
