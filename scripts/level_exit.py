@@ -9,6 +9,7 @@ class LevelExit(bge.types.KX_PythonComponent):
         ("Rotation Speed", 1.0),
         ("Player Scale", 0.5),
         ("Player", bpy.types.Object),
+        ("Game Stats", bpy.types.Object),
         ("Endgame Text", bpy.types.Object),
     ])
 
@@ -18,6 +19,7 @@ class LevelExit(bge.types.KX_PythonComponent):
         self.elevation_speed = args["Elevation Speed"]
         self.rotation_speed = args["Rotation Speed"]
         self.endgame_text = self.object.scene.objects[args["Endgame Text"].name].components["EndgameText"]
+        self.game_stats = self.object.scene.objects[args["Game Stats"].name].components["GameStats"]
         self.player_scale = args["Player Scale"]
         self.player = self.object.scene.objects[args["Player"].name]
         self.player_rig = self.player.children["Player.Rig"]
@@ -39,6 +41,7 @@ class LevelExit(bge.types.KX_PythonComponent):
             scale = max(self.player_scale, scale * 0.99)
             self.player.worldScale = [scale] * 3
         elif player_vec.magnitude <= self.range:
+            self.game_stats.save_stats()
             self.endgame_text.activate()
             self.player_controller.is_blocked = True
             self.player_rig.stopAction()
