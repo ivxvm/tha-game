@@ -1,8 +1,6 @@
-import os, bge, bpy, deltatime
+import bge, bpy, os, deltatime
 from math import floor
 from collections import OrderedDict
-
-STATS_FILE_PATH = bge.logic.expandPath("//gamestats.txt")
 
 class GameStats(bge.types.KX_PythonComponent):
     args = OrderedDict([
@@ -27,29 +25,33 @@ class GameStats(bge.types.KX_PythonComponent):
         self.old_best_time = 9999
         self.old_best_gems = 0
         self.old_best_drawings = 0
+        self.collected_drawings = []
         self.load_old_stats()
 
     def update(self):
         self.playtime += deltatime.update(self)
 
     def load_old_stats(self):
-        if not os.path.exists(STATS_FILE_PATH):
-            open(STATS_FILE_PATH, 'w').close()
-        with open(STATS_FILE_PATH, 'r') as file:
+        stats_file_path = bge.logic.expandPath("//gamestats.txt")
+        if not os.path.exists(stats_file_path):
+            open(stats_file_path, 'w').close()
+        with open(stats_file_path, 'r') as file:
             lines = file.read().splitlines()
             self.old_stats_lines = lines + ['']*(self.level_index + 1 - len(lines))
             try:
                 level_stats = lines[self.level_index]
-                [time, gems, _, drawings, _] = level_stats.split(",")
+                [stats_str, collected_drawings_str] = level_stats.split(";")
+                [time, gems, _, drawings, _] = stats_str.split(",")
                 self.old_best_time = int(time)
                 self.old_best_gems = int(gems)
                 self.old_best_drawings = int(drawings)
-                print("")
+                self.collected_drawings = [int(x) for x in collected_drawings_str.split(",")]
             except:
                 pass
 
     def save_stats(self):
-        with open(STATS_FILE_PATH, 'w') as file:
+        stats_file_path = bge.logic.expandPath("//gamestats.txt")
+        with open(stats_file_path, 'w') as file:
             for i in range(len(self.old_stats_lines)):
                 if i == self.level_index:
                     self.current_gems = self.inventory.items.get(self.gem_item_id, 0)
@@ -61,6 +63,8 @@ class GameStats(bge.types.KX_PythonComponent):
                     file.write(",")
                     self.current_drawings = self.inventory.items.get(self.drawing_item_id, 0)
                     file.write(",".join(str(x) for x in [self.current_drawings, self.total_drawings]))
+                    file.write(";")
+                    file.write(",".join(str(x) for x in self.collected_drawings))
                     file.write("\n")
                 else:
                     file.write(self.old_stats_lines[i])
