@@ -55,14 +55,12 @@ class GameStats(bge.types.KX_PythonComponent):
             for i in range(len(self.old_stats_lines)):
                 if i == self.level_index:
                     self.current_gems = self.inventory.items.get(self.gem_item_id, 0)
-                    best_gems_result = max(self.old_best_gems, self.current_gems)
-                    if best_gems_result != self.old_best_gems or self.playtime < self.old_best_time:
+                    if self.current_gems > self.old_best_gems or (self.current_gems == self.old_best_gems and self.playtime < self.old_best_time):
                         file.write(",".join(str(x) for x in [floor(self.playtime), self.current_gems, self.total_gems]))
                     else:
                         file.write(",".join(str(x) for x in [self.old_best_time, self.old_best_gems, self.total_gems]))
                     file.write(",")
-                    self.current_drawings = self.inventory.items.get(self.drawing_item_id, 0)
-                    file.write(",".join(str(x) for x in [self.current_drawings, self.total_drawings]))
+                    file.write(",".join(str(x) for x in [len(self.collected_drawings), self.total_drawings]))
                     file.write(";")
                     file.write(",".join(str(x) for x in self.collected_drawings))
                     file.write("\n")
