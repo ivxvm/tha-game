@@ -17,6 +17,13 @@ class EndgameText(bge.types.KX_PythonComponent):
         self.set_hierarchy_visible(self.time_text, False)
         self.set_hierarchy_visible(self.gems_text, False)
         self.press_enter_text.visible = False
+        self.active = False
+
+    def update(self):
+        if self.active:
+            keyboard = bge.logic.keyboard.events
+            if keyboard[bge.events.ENTERKEY] == bge.logic.KX_INPUT_JUST_ACTIVATED:
+                bge.logic.endGame()
 
     def activate(self):
         time_text = "Time: %d" % int(self.game_stats.playtime)
@@ -26,6 +33,7 @@ class EndgameText(bge.types.KX_PythonComponent):
         self.set_hierarchy_visible(self.time_text, True)
         self.set_hierarchy_visible(self.gems_text, True)
         self.press_enter_text.visible = True
+        self.active = True
 
     def set_hierarchy_text(self, object, text):
         object["Text"] = text
