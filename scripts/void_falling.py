@@ -23,7 +23,7 @@ class VoidFalling(bge.types.KX_PythonComponent):
         self.fall_sound = self.object.actuators["FallSound"]
 
     def update(self):
-        if self.camera.worldPosition.z < self.min_camera_z:
+        if self.camera.worldPosition.z < self.min_camera_z and self.object.worldPosition.z < self.min_camera_z:
             self.secondary_camera.blenderObject.location = self.camera.worldPosition
             self.secondary_camera.blenderObject.location.z = self.min_camera_z
             self.switch_camera(self.secondary_camera)
