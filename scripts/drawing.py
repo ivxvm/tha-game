@@ -21,3 +21,4 @@ class Drawing(bge.types.KX_PythonComponent):
     def trigger(self):
         print("[Drawing] adding drawing #%d to collected_drawings" % self.drawing_id)
         self.game_stats.collected_drawings.append(self.drawing_id)
+        self.game_stats.save_collected_drawings()
