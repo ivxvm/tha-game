@@ -143,28 +143,29 @@ class PlayerController(bge.types.KX_PythonComponent):
     def update_movement(self, delta):
         keyboard = bge.logic.keyboard.events
 
-        speed_x = 0
-        speed_y = 0
+        input_x = 0
+        input_y = 0
 
         if not self.is_casting:
             if keyboard[bge.events.AKEY]:
-                speed_x -= 1
+                input_x -= 1
             if keyboard[bge.events.DKEY]:
-                speed_x += 1
+                input_x += 1
             if keyboard[bge.events.WKEY]:
-                speed_y += 1
+                input_y += 1
             if keyboard[bge.events.SKEY]:
-                speed_y -= 1
+                input_y -= 1
 
-        speed_vec = Vector([speed_x, speed_y, 0])
-        speed_vec.normalize()
-        speed_vec *= self.move_speed
+        input_vec = Vector([input_x, input_y, 0])
+        input_vec.normalize()
 
-        move_vec = self.camera_pivot.worldOrientation @ speed_vec * delta
-        move_vec[2] = 0
+        move_vec = self.camera_pivot.worldOrientation @ input_vec
+        move_vec = Vector((move_vec.x, move_vec.y, 0))
+        move_vec.normalize()
+        move_vec *= self.move_speed * delta
         self.object.applyMovement(move_vec, False)
 
-        is_running = speed_x != 0 or speed_y != 0
+        is_running = input_x != 0 or input_y != 0
 
         self.set_running(is_running)
         self.set_grounded(self.character.onGround)

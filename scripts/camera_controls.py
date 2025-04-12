@@ -1,6 +1,9 @@
 import bge, bpy
 from collections import OrderedDict
 
+MAX_VERTICAL_ANGLE = 1.5
+MIN_VERTICAL_ANGLE = -1.0
+
 # Designed to be placed on camera pivot object
 class CameraControls(bge.types.KX_PythonComponent):
     args = OrderedDict([
@@ -35,8 +38,12 @@ class CameraControls(bge.types.KX_PythonComponent):
         dx = screen_center_x - self.mouse.position[0]
         dy = screen_center_y - self.mouse.position[1]
         bge.render.setMousePosition(screen_center_x, screen_center_y)
+
+        euler_x = self.object.worldOrientation.to_euler().x
+        new_vertical_angle = euler_x + dy * self.look_sensitivity
+        new_vertical_angle = max(MIN_VERTICAL_ANGLE, min(MAX_VERTICAL_ANGLE, new_vertical_angle))
+        self.object.applyRotation([new_vertical_angle - euler_x, 0, 0], True)
         self.object.applyRotation([0, 0, dx * self.look_sensitivity], False)
-        self.object.applyRotation([dy * self.look_sensitivity, 0, 0], True)
 
         hit_target, hit_position, _ = self.object.rayCast(self.camera.worldPosition, mask=0x1)
         if hit_target:
