@@ -24,3 +24,4 @@ class CameraSeeThrough(bge.types.KX_PythonComponent):
             self.target.blenderObject["transparency"] = max(0.0, min(1.0, transparency))
         else:
             self.target.blenderObject["transparency"] = 0.0
+        self.target.blenderObject.data.update()
